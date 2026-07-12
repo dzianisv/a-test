@@ -12,7 +12,7 @@ Models:
 Test Android apps and browser extensions with a computer-use agent.
 
 Apps:
-- Mobile: in Android emulator, iOS emulator
+- Mobile: in Android emulator, iOS emulator 9comming soon...)
 - WebApps: in Google Chrome
 - Chrome Extensions: in Google Chrome
 - Terminal/CLI apps: spawns linux terminal
