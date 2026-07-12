@@ -27,9 +27,15 @@ jobs:
           # calculator's digit buttons are only ~80px wide, so the CUA
           # planner's pixel-coordinate taps land right on button boundaries
           # and intermittently mis-tap the neighbor digit (e.g. tapping "3"
-          # instead of "2"), causing flaky self-reported test failures. A
-          # standard phone profile gives large, well-separated touch targets.
-          profile: pixel_7_pro
+          # instead of "2"), causing flaky self-reported test failures.
+          # `pixel_7_pro` (1440x3120, ~512dpi) overcorrected: its very high
+          # density/tall aspect ratio made the vintage com.android.calculator2
+          # app (bundled in the API 28 "default" system image) render its
+          # result text illegibly ("garbled symbols" per agent report).
+          # `pixel_4` (1080x2280, ~440dpi) is large enough for well-separated
+          # touch targets while staying close to the density/aspect ratio the
+          # legacy calculator app actually renders correctly.
+          profile: pixel_4
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
           script: agentprobe run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
