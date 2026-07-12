@@ -1,5 +1,7 @@
 # a-test
 
+▶️ [Watch the demo video](https://youtu.be/jssWwdsB5FA)
+
 Autonomous AI Agent that automate Apps testing for you
 Models:
 - OpenAI models on Azure and api.openai.com
