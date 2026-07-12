@@ -46,6 +46,19 @@ computer-use agent packaged as an easy-to-install, reusable **GitHub Action** so
 covered with real end-to-end tests. *(Reusable-action coverage across all three projects is still in
 progress.)*
 
+
+## QA
+
+**What is it?** A harness that lets vision models test real Android apps and Chrome: screenshot → decide action → tap/type/scroll → verify result.
+
+**Why not Playwright/Appium?** Those depend on selectors; ours can operate from what a user actually sees.
+
+**How do you prevent false passes?** A separate vision judge checks the final screenshot; agent self-reported “done” is not enough.
+
+**What’s the demo?** Agent solves a calculator problem, checks live weather content, or verifies a Chrome extension install flow.
+
+Limitations? Android and browser only today; no iOS, device farm, or dashboard yet.
+
 ## Demo: Agents in Action
 
 **Android**: Agent solves arithmetic (computes 27 + 18 = 45)
