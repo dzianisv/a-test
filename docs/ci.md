@@ -89,6 +89,46 @@ available after both pass and fail:
     if-no-files-found: warn
 ```
 
+## Chrome-Sync Login on H Company Holo
+
+[`cua-chrome-sync-login-hcompany.yml`](../.github/workflows/cua-chrome-sync-login-hcompany.yml)
+runs the same test as `cua-chrome-sync-login.yml`
+(`examples/dual-surface/chrome-sync-login.ts`), but backs the final vision-judge
+call with [H Company](https://hub.hcompany.ai)'s Holo Models API instead of
+Azure/OpenAI. It triggers on `workflow_dispatch` and a daily `schedule` — not on
+every push/PR — since it depends on the `HAI_API_KEY` secret and exercises H
+Company's hosted API.
+
+Set `HAI_API_KEY` (see [Required GitHub repository secrets](#required-github-repository-secrets))
+and the workflow picks the H Company backend automatically: `chrome-sync-login.ts`
+checks `AZURE_CUA_API_KEY` and `OPENAI_API_KEY` first (unchanged for the existing
+workflow), then falls back to `HAI_API_KEY`, pointing the OpenAI-compatible client
+at `https://api.hcompany.ai/v1/` with model `holo3-1-35b-a3b` (H Company's free
+tier) via the Chat Completions API — Holo's API only implements
+`POST /chat/completions`, not the Responses API used for Azure/OpenAI, so
+`core/vision.ts`'s `visionJudge` branches on `apiStyle: "chat"` for this backend.
+
+## Required GitHub repository secrets
+
+Configure these under **Settings → Secrets and variables → Actions** (or
+`gh secret set NAME` from a checkout with `repo` scope). Never print, log, or
+commit the secret values themselves — only the names below are needed to wire
+up a workflow.
+
+| Secret | Used by | Notes |
+| --- | --- | --- |
+| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-chrome-webapp.yml`, `agentprobe-android`/`agentprobe-browser` actions | Azure OpenAI-compatible CUA planner/vision key. |
+| `AZURE_CUA_BASE_URL` | same as above | Azure endpoint base URL paired with `AZURE_CUA_API_KEY`. |
+| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `agentprobe/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
+
+`gh secret set` example (run locally — this reads the value from your own
+terminal/clipboard and uploads it directly to GitHub; it is never displayed,
+logged, or written to a file by this repo's tooling):
+
+```bash
+gh secret set HAI_API_KEY --repo dzianisv/agentprobe
+```
+
 ## pytest integration
 
 The `agentprobe` package registers a `pytest11` entry point so pytest picks up

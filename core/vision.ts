@@ -30,16 +30,31 @@ import { type BlankFrameOptions, captureUntilPainted } from "./blank-frame";
 import { saveCursorScreenshot, saveFullScreenshot } from "./screenshot";
 import { xdotoolClick, xdotoolMouseMove } from "./xdotool";
 
-export type VisionClient = { client: OpenAI; model: string };
+// "responses" (default) targets OpenAI's Responses API (`client.responses.create`),
+// used by Azure OpenAI / OpenAI-proper deployments. "chat" targets the plain
+// Chat Completions API (`client.chat.completions.create`) for OpenAI-compatible
+// providers that only implement that endpoint -- e.g. H Company's Models API
+// (https://api.hcompany.ai/v1/, POST /chat/completions only, no /responses;
+// see https://hub.hcompany.ai/api-reference). Only visionJudge branches on
+// this today -- visionLocateAndClick still assumes Responses API callers.
+export type VisionApiStyle = "responses" | "chat";
+
+export type VisionClient = { client: OpenAI; model: string; apiStyle: VisionApiStyle };
 
 const DEFAULT_SEND_WIDTH = 1366;
 const DEFAULT_SEND_HEIGHT = 768;
 
-export function createVisionClient(opts: { apiKey: string; baseURL?: string; model: string }): VisionClient {
+export function createVisionClient(opts: {
+  apiKey: string;
+  baseURL?: string;
+  model: string;
+  /** Defaults to "responses" (OpenAI Responses API) to preserve existing behavior. */
+  apiStyle?: VisionApiStyle;
+}): VisionClient {
   const clientOptions: ConstructorParameters<typeof OpenAI>[0] = { apiKey: opts.apiKey };
   if (opts.baseURL) clientOptions.baseURL = opts.baseURL;
   const client = new OpenAI(clientOptions);
-  return { client, model: opts.model };
+  return { client, model: opts.model, apiStyle: opts.apiStyle ?? "responses" };
 }
 
 /**
@@ -188,6 +203,29 @@ export type VisionJudgeOptions = {
   label?: string;
 };
 
+/** Shared JSON-schema for the judge's structured verdict, reused by the "chat" branch's `structured_outputs` (Holo-specific field, see https://hub.hcompany.ai/models-api/chat-completions). */
+const _JUDGE_STRUCTURED_OUTPUT_SCHEMA = {
+  type: "object",
+  properties: {
+    verdict: { type: "string", enum: ["YES", "NO"] },
+    evidence: { type: "string" }
+  },
+  required: ["verdict", "evidence"]
+};
+
+function parseJudgeVerdict(text: string): { verdict: "YES" | "NO"; evidence: string } {
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) {
+    throw new Error(`visionJudge returned no parseable JSON verdict (raw: ${JSON.stringify(text).slice(0, 300)})`);
+  }
+  const parsed = JSON.parse(match[0]) as { verdict?: unknown; evidence?: unknown };
+  const verdict = String(parsed.verdict ?? "").toUpperCase();
+  if (verdict !== "YES" && verdict !== "NO") {
+    throw new Error(`visionJudge verdict is neither YES nor NO (raw: ${JSON.stringify(text).slice(0, 300)})`);
+  }
+  return { verdict: verdict as "YES" | "NO", evidence: String(parsed.evidence ?? "") };
+}
+
 /**
  * Independent CUA-style vision judge: given a screenshot, ask the vision
  * model — as a judge, not the actor — a yes/no `question` about what's
@@ -196,6 +234,11 @@ export type VisionJudgeOptions = {
  * the judge saw is inspectable. Any API/parse failure THROWS — a judge that
  * cannot run is a step failure, never a silent pass. Default-NO prompting:
  * the question is always suffixed with an explicit "default to NO" clause.
+ *
+ * `vision.apiStyle` selects the wire format: "responses" (default) calls
+ * OpenAI's Responses API; "chat" calls the plain Chat Completions API for
+ * OpenAI-compatible providers that only implement `/chat/completions` (e.g.
+ * H Company's Holo Models API -- see createVisionClient's apiStyle doc).
  */
 export async function visionJudge(
   vision: VisionClient,
@@ -209,6 +252,34 @@ export async function visionJudge(
   const sentPath = path.join(opts.outputDir, `vision-judge-${label}.png`);
   await sharp(screenshotPath).resize(sendWidth, sendHeight, { fit: "fill" }).png().toFile(sentPath);
   const shotBase64 = (await readFile(sentPath)).toString("base64");
+  const promptText = `${question} Answer ONLY {"verdict":"YES"|"NO","evidence":"<quote the visible text you base it on>"}. Default to NO if the answer is not clearly readable.`;
+
+  if (vision.apiStyle === "chat") {
+    // Holo-specific fields (`structured_outputs`, `chat_template_kwargs`) are
+    // top-level wire fields the OpenAI SDK doesn't know about, so they must
+    // go through an untyped spread rather than a typed param -- see
+    // agentprobe/grounding.py's Python equivalent (`extra_body`) and
+    // https://hub.hcompany.ai/api-reference#conventions.
+    const response = await vision.client.chat.completions.create({
+      model: vision.model,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: promptText },
+            { type: "image_url", image_url: { url: `data:image/png;base64,${shotBase64}` } }
+          ]
+        }
+      ],
+      temperature: 0.0,
+      ...({
+        structured_outputs: { json: _JUDGE_STRUCTURED_OUTPUT_SCHEMA },
+        chat_template_kwargs: { enable_thinking: false }
+      } as object)
+    });
+    const text = response.choices[0]?.message?.content ?? "";
+    return parseJudgeVerdict(text);
+  }
 
   const response = (await vision.client.responses.create({
     model: vision.model,
@@ -218,7 +289,7 @@ export async function visionJudge(
         content: [
           {
             type: "input_text",
-            text: `${question} Answer ONLY {"verdict":"YES"|"NO","evidence":"<quote the visible text you base it on>"}. Default to NO if the answer is not clearly readable.`
+            text: promptText
           },
           { type: "input_image", image_url: `data:image/png;base64,${shotBase64}`, detail: "high" }
         ]
@@ -227,14 +298,5 @@ export async function visionJudge(
   })) as unknown as { output_text?: string; output?: unknown[] };
 
   const text = extractOutputText(response);
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) {
-    throw new Error(`visionJudge returned no parseable JSON verdict (raw: ${JSON.stringify(text).slice(0, 300)})`);
-  }
-  const parsed = JSON.parse(match[0]) as { verdict?: unknown; evidence?: unknown };
-  const verdict = String(parsed.verdict ?? "").toUpperCase();
-  if (verdict !== "YES" && verdict !== "NO") {
-    throw new Error(`visionJudge verdict is neither YES nor NO (raw: ${JSON.stringify(text).slice(0, 300)})`);
-  }
-  return { verdict: verdict as "YES" | "NO", evidence: String(parsed.evidence ?? "") };
+  return parseJudgeVerdict(text);
 }

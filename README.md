@@ -1,12 +1,18 @@
-# agentprobe
+# a-test
 
-> **⚡ Works with [H Company](https://hub.hcompany.ai) computer-use models.** agentprobe drives real
-> Android devices and Chrome browsers using H Company's **Holo** grounding models
-> (`holo3-1-35b-a3b` / `holo3-122b-a10b`) — screenshot in, pixel-accurate click coordinates out.
-> Point it at `https://api.hcompany.ai/v1/` with your `HAI_API_KEY` and it just works. See
-> [Computer-use models](#computer-use-models-h-company-holo).
-
+Autonomous AI Agent that automate Apps testing for you
+Models:
+- OpenAI models on Azure and api.openai.com
+- [H-Company](https://hub.hcompany.ai) Holo models `holo3-1-35b-a3b`, `holo3-122b-a10b`
 Test Android apps and browser extensions with a computer-use agent.
+
+Apps:
+- Mobile: in Android emulator, iOS emulator
+- WebApps: in Google Chrome
+- Chrome Extensions: in Google Chrome
+- Terminal/CLI apps: spawns linux terminal
+
+***
 
 An agent looks at screenshots, decides what to tap or type, and runs until the goal is met or the step budget is exhausted. When the run ends, a second vision call judges the final screenshot against the case's success criteria — so a `pass` means the result was actually confirmed on screen, not just claimed by the agent. The run produces a GIF you can inspect to see exactly where it succeeded or got confused.
 
@@ -341,3 +347,10 @@ See [docs/writing-cases.md](docs/writing-cases.md) and [skills/write-cua-test/SK
 ## CI integration docs
 
 See [docs/ci.md](docs/ci.md) and [skills/agentprobe-ci/SKILL.md](skills/agentprobe-ci/SKILL.md).
+
+
+# Models
+## H-Company Holo
+
+> Point it at `https://api.hcompany.ai/v1/` with your `HAI_API_KEY` and it just works. See
+> [Computer-use models](#computer-use-models-h-company-holo).
