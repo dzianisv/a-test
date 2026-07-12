@@ -14,7 +14,9 @@
 //
 // Usage: bun examples/dual-surface/terminal-and-browser.ts [output-dir]
 // Requires: Xvfb running on :99, xterm, xdotool, scrot, ffmpeg, a Chrome
-// binary, and AZURE_CUA_API_KEY (+ AZURE_CUA_BASE_URL) or OPENAI_API_KEY set.
+// binary, and one of AZURE_CUA_API_KEY (+ AZURE_CUA_BASE_URL), OPENAI_API_KEY,
+// or HAI_API_KEY (H Company Holo Models API, https://hub.hcompany.ai -- key
+// from https://portal.hcompany.ai) set.
 
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -36,14 +38,27 @@ async function main(): Promise<void> {
 
   const azureKey = process.env.AZURE_CUA_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (!azureKey && !openaiKey) {
-    throw new Error("Either AZURE_CUA_API_KEY or OPENAI_API_KEY is required");
+  // H Company's Holo Models API (HAI_API_KEY -- same env var name used by
+  // agentprobe/grounding.py, bench/backends.yaml, and the README) is checked
+  // last so existing Azure/OpenAI-configured runs are unaffected. Holo only
+  // implements the Chat Completions endpoint (no /responses -- see
+  // https://hub.hcompany.ai/api-reference), hence apiStyle: "chat" below.
+  const haiKey = process.env.HAI_API_KEY;
+  if (!azureKey && !openaiKey && !haiKey) {
+    throw new Error("Either AZURE_CUA_API_KEY, OPENAI_API_KEY, or HAI_API_KEY is required");
   }
-  const vision = createVisionClient({
-    apiKey: azureKey ?? openaiKey ?? "",
-    baseURL: azureKey ? process.env.AZURE_CUA_BASE_URL : process.env.OPENAI_BASE_URL,
-    model: process.env.CUA_MODEL ?? (azureKey ? "gpt-5.4" : "gpt-4o")
-  });
+  const vision = azureKey || openaiKey
+    ? createVisionClient({
+        apiKey: azureKey ?? openaiKey ?? "",
+        baseURL: azureKey ? process.env.AZURE_CUA_BASE_URL : process.env.OPENAI_BASE_URL,
+        model: process.env.CUA_MODEL ?? (azureKey ? "gpt-5.4" : "gpt-4o")
+      })
+    : createVisionClient({
+        apiKey: haiKey ?? "",
+        baseURL: process.env.HAI_BASE_URL ?? "https://api.hcompany.ai/v1/",
+        model: process.env.CUA_MODEL ?? "holo3-1-35b-a3b",
+        apiStyle: "chat"
+      });
 
   // Declared before the try (and assigned inside it) so that if either
   // startRecording or startTerminal itself throws before the try block is

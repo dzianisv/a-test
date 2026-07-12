@@ -5,6 +5,12 @@ name: CUA Chrome-Sync Login (H Company Holo)
 # Azure/OpenAI for the final vision-judge call. Manual + scheduled only (not on
 # every push/PR) since it depends on the HAI_API_KEY repo secret, which may not
 # be configured on every fork, and exercises H Company's hosted free tier.
+#
+# Delegates the install/Xvfb/run steps to the reusable
+# .github/actions/agentprobe-desktop composite action (same action used by
+# cua-chrome-sync-login.yml and cua-dual-surface.yml) instead of duplicating
+# them inline — only the HAI_API_KEY verification step and env wiring are
+# specific to this workflow.
 
 on:
   workflow_dispatch:
@@ -18,34 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install agentprobe
-        run: pip install -e .
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install root deps
-        run: bun install
-
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb xdotool scrot ffmpeg xterm bsdutils
-          google-chrome --version
-          script --version
-
-      - name: Start Xvfb
-        run: |
-          Xvfb :99 -screen 0 1920x1080x24 &
-          echo "DISPLAY=:99" >> $GITHUB_ENV
-
       - name: Verify HAI_API_KEY secret is configured
         env:
           HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
@@ -56,11 +34,17 @@ jobs:
           fi
 
       - name: Run chrome-sync login (terminal + browser) example against H Company Holo
+        uses: ./.github/actions/agentprobe-desktop
+        with:
+          case: examples/dual-surface/chrome-sync-login.ts
+          output-dir: /tmp/chrome-sync-login-hcompany-output
+          # Explicit Holo free-tier model — the action's `model` input
+          # defaults to an Azure deployment name (gpt-5.4) and is always
+          # passed through as CUA_MODEL, so it must be overridden here or it
+          # would clobber chrome-sync-login.ts's own "holo3-1-35b-a3b" default.
+          model: holo3-1-35b-a3b
         env:
           HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
-          DISPLAY: ":99"
-        run: |
-          bun run examples/dual-surface/chrome-sync-login.ts /tmp/chrome-sync-login-hcompany-output
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

@@ -35,6 +35,48 @@ The action handles: `pip install agentprobe`, `ffmpeg`, KVM device, and the emul
 
 The action handles: `pip install agentprobe`, bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and Xvfb startup.
 
+### Desktop (Terminal + Browser)
+
+```yaml
+- uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@main
+  with:
+    case: examples/dual-surface/chrome-sync-login.ts
+    output-dir: /tmp/cua-output
+  env:
+    # Azure (or swap for OPENAI_API_KEY/OPENAI_BASE_URL, or HAI_API_KEY/HAI_BASE_URL)
+    AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
+    AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
+```
+
+```yaml
+- uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@main
+  with:
+    case: examples/dual-surface/terminal-and-browser.ts
+    output-dir: /tmp/cua-output
+  env:
+    OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+```
+
+```yaml
+- uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@main
+  with:
+    case: examples/dual-surface/chrome-sync-login.ts
+    output-dir: /tmp/cua-output
+    model: holo3-1-35b-a3b
+  env:
+    HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
+    # HAI_BASE_URL optional — defaults to https://api.hcompany.ai/v1/
+```
+
+The action handles: `pip install agentprobe`, bun, a sparse checkout of `core`,
+`surfaces`, and `examples/dual-surface`, `xvfb`, `xdotool`, `scrot`, `ffmpeg`,
+`xterm`, `bsdutils` (for the `script` command used by `chrome-sync-login.ts`),
+and Xvfb startup. The vision-judge backend is auto-detected at runtime by the
+script itself, in priority order: `AZURE_CUA_API_KEY` (+ `AZURE_CUA_BASE_URL`),
+then `OPENAI_API_KEY` (+ `OPENAI_BASE_URL`), then `HAI_API_KEY` (+ optional
+`HAI_BASE_URL`) — the action has no `input` for any API key, only the `case`,
+`output-dir`, `model`, and `hai-base-url` inputs shown above.
+
 ## Android emulator (manual)
 
 Uses `reactivecircus/android-emulator-runner@v2` on `ubuntu-latest`.
@@ -99,14 +141,22 @@ Azure/OpenAI. It triggers on `workflow_dispatch` and a daily `schedule` — not 
 every push/PR — since it depends on the `HAI_API_KEY` secret and exercises H
 Company's hosted API.
 
+The workflow itself is now a thin wrapper: a "Verify HAI_API_KEY secret is
+configured" step (fails fast with `::error::` if the secret is unset) followed
+by a single `uses: ./.github/actions/agentprobe-desktop` step — the same
+reusable action documented in [Desktop (Terminal + Browser)](#desktop-terminal--browser)
+above, also used by `cua-chrome-sync-login.yml` and `cua-dual-surface.yml`. No
+install/Xvfb/run steps are duplicated inline anymore.
+
 Set `HAI_API_KEY` (see [Required GitHub repository secrets](#required-github-repository-secrets))
 and the workflow picks the H Company backend automatically: `chrome-sync-login.ts`
 checks `AZURE_CUA_API_KEY` and `OPENAI_API_KEY` first (unchanged for the existing
 workflow), then falls back to `HAI_API_KEY`, pointing the OpenAI-compatible client
-at `https://api.hcompany.ai/v1/` with model `holo3-1-35b-a3b` (H Company's free
-tier) via the Chat Completions API — Holo's API only implements
-`POST /chat/completions`, not the Responses API used for Azure/OpenAI, so
-`core/vision.ts`'s `visionJudge` branches on `apiStyle: "chat"` for this backend.
+at `https://api.hcompany.ai/v1/` (override with `HAI_BASE_URL`) with model
+`holo3-1-35b-a3b` (H Company's free tier) via the Chat Completions API — Holo's
+API only implements `POST /chat/completions`, not the Responses API used for
+Azure/OpenAI, so `core/vision.ts`'s `visionJudge` branches on `apiStyle: "chat"`
+for this backend.
 
 ## Required GitHub repository secrets
 
@@ -117,9 +167,10 @@ up a workflow.
 
 | Secret | Used by | Notes |
 | --- | --- | --- |
-| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-chrome-webapp.yml`, `agentprobe-android`/`agentprobe-browser` actions | Azure OpenAI-compatible CUA planner/vision key. |
+| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-dual-surface.yml`, `cua-chrome-webapp.yml`, `agentprobe-android`/`agentprobe-browser`/`agentprobe-desktop` actions | Azure OpenAI-compatible CUA planner/vision key. |
 | `AZURE_CUA_BASE_URL` | same as above | Azure endpoint base URL paired with `AZURE_CUA_API_KEY`. |
-| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `agentprobe/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
+| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `agentprobe-desktop` action, `agentprobe/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
+| `HAI_BASE_URL` | `agentprobe-desktop` action (optional `hai-base-url` input) | Optional override for the H Company Holo Models API base URL; defaults to `https://api.hcompany.ai/v1/` if unset. |
 
 `gh secret set` example (run locally — this reads the value from your own
 terminal/clipboard and uploads it directly to GitHub; it is never displayed,

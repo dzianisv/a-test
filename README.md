@@ -93,6 +93,10 @@ The Holo backend is registered in [`bench/backends.yaml`](bench/backends.yaml) â
 needed to point at `holo3-122b-a10b` (paid) or a self-hosted open-weight Holo checkpoint from
 [Hugging Face](https://huggingface.co/Hcompany).
 
+For CI wiring (GitHub Actions), see the ["Desktop (Terminal + Browser)"](docs/ci.md#desktop-terminal--browser)
+reusable action in [docs/ci.md](docs/ci.md), which auto-detects `HAI_API_KEY` alongside
+`AZURE_CUA_API_KEY`/`OPENAI_API_KEY`.
+
 ## What it is / what it isn't
 
 - **Is**: a test harness that drives a real Android device (via adb) or real Chrome (via CDP) using an LLM agent
