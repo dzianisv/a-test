@@ -208,7 +208,17 @@ async function main(): Promise<void> {
     chrome = startChrome({
       chromeBin: process.env.CHROME_PATH ?? "google-chrome",
       userDataDir: "/tmp/agentprobe-chrome-sync-login-chrome-profile",
-      initialUrl: authUrl,
+      // Launch on about:blank, NOT the live authUrl: CDP readiness must
+      // not be gated on a real external navigation actually completing.
+      // Passing authUrl directly as Chrome's startup URL was observed to
+      // leave the CDP port unresponsive for the entire waitForChromeReady
+      // window (CI run 29212829977 — "Chrome CDP on port 9334 did not
+      // respond within 20000ms", with an all-black browser region in the
+      // recording, i.e. no window ever painted). terminal-and-browser.ts
+      // proves about:blank + a post-ready CDP navigation is the reliable
+      // startup path in this exact CI environment; navigating via CDP
+      // below (once the session is attached) reproduces that same shape.
+      initialUrl: "about:blank",
       outputDir,
       cdpPort: CDP_PORT,
       windowPositionX: DISPLAY_WIDTH / 2,
@@ -220,8 +230,17 @@ async function main(): Promise<void> {
 
     const wsUrl = await getBrowserWsUrl(CDP_PORT);
     browserWs = await openCdpWs(wsUrl);
-    const target = await findTargetByUrl(CDP_PORT, (url) => url.includes("/auth/cli"), 20_000, "auth/cli page target");
-    const sessionId = await attachAndEnable(browserWs, target.id);
+    // Only one tab exists at this point (the about:blank tab Chrome opened
+    // on startup) — grab it by type rather than matching a URL that hasn't
+    // been navigated to yet.
+    const initialTarget = await findTargetByUrl(CDP_PORT, () => true, 10_000, "initial browser tab");
+    const sessionId = await attachAndEnable(browserWs, initialTarget.id);
+
+    // Deterministic CDP navigation to the live auth URL, now that the
+    // session is attached and Page/Runtime are enabled — decoupled from
+    // Chrome's own startup-URL handling (see comment on startChrome above).
+    await cdpSend(browserWs, "Page.navigate", { url: authUrl }, sessionId);
+    console.log(`[chrome-sync-login] navigated to auth URL: ${authUrl}`);
 
     await pollForElementReady(browserWs, sessionId, elementReadyExpr("#email"), 20_000, "email input");
     await pollForElementReady(browserWs, sessionId, elementReadyExpr("#password"), 5_000, "password input");
