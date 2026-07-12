@@ -126,6 +126,27 @@ def _load_case(case_path, max_steps_override):
     sys.exit(2)
 
 
+def _build_android_grounding_fn():
+    """Build the Holo grounding_fn for Android taps when HAI_API_KEY is set.
+
+    Blind pixel-coordinate taps from the planner LLM are imprecise on real
+    touchscreens (adjacent buttons are often <100px apart), causing flaky
+    mis-taps. Holo is a dedicated grounding/localization model that resolves
+    a short element description (e.g. "the digit 7 button") to real pixel
+    coordinates from the current screenshot -- see agentprobe/grounding.py.
+    Returns None (blind mode, unchanged behavior) when HAI_API_KEY isn't
+    configured, so this is a no-op for environments without the key.
+    """
+    if not os.environ.get("HAI_API_KEY"):
+        return None
+    from .grounding import make_grounding_fn
+    try:
+        return make_grounding_fn()
+    except ValueError as e:
+        print(f"WARNING: Holo grounding unavailable, falling back to blind taps: {e}", file=sys.stderr)
+        return None
+
+
 def _run_android(args):
     """Load case and run it for Android, printing a verdict."""
     from .loop import run_case
@@ -137,6 +158,7 @@ def _run_android(args):
 
     model = args.model or os.environ.get("CUA_MODEL", "gpt-4o")
     output_dir = args.output_dir or "/tmp/agentprobe-output"
+    grounding_fn = _build_android_grounding_fn()
 
     result = run_case(
         case,
@@ -144,6 +166,7 @@ def _run_android(args):
         include_ui_xml=args.include_xml,
         output_dir=output_dir,
         speed_multiplier=args.speed_multiplier or 1.0,
+        grounding_fn=grounding_fn,
     )
 
     if result.get("verdict") == "pass":
