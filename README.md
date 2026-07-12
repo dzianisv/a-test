@@ -2,9 +2,17 @@
 
 [![Watch the demo](https://img.shields.io/badge/▶-Watch_the_demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/qFeNZg59QJ0)
 
-**Green CI. Broken app.** A passing checkmark is not proof your app works.
+**Stop pet-sitting your AI coding agent.**
 
-agentprobe drives a real computer-use agent through your app like an actual user — tapping, typing, navigating — then an independent vision judge verifies what's actually on screen. It closes the gap between "tests passed" and "the app actually works."
+AI coding agents write code fast, but a green CI run doesn't prove the app actually works — someone still has to babysit the PR and click through it by hand. agentprobe turns your product's user journeys — the ones already scoped in a PRD — into computer-use test cases committed as YAML, then executes them in CI to drive the real app: clicking, typing, waiting, and verifying what's actually on screen.
+
+That's what gates bad AI-written PRs before they reach production. Every run leaves behind screenshots, a video, and a GIF, plus an independent vision-model verdict — not brittle selectors or a "looks good to me" review.
+
+**From PRD to CI gate:**
+1. Write user journeys in a PRD
+2. Commit them as YAML test cases
+3. CI drives the real app — click, type, wait, verify
+4. Get screenshots, video, and a GIF, plus a vision verdict, before merge
 
 Models:
 - OpenAI models on Azure and api.openai.com
