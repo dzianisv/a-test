@@ -22,6 +22,14 @@ jobs:
         with:
           api-level: 28
           arch: x86_64
+          # Explicit device profile: without this, avdmanager falls back to a
+          # tiny implicit default screen (320x640px). On that screen the
+          # calculator's digit buttons are only ~80px wide, so the CUA
+          # planner's pixel-coordinate taps land right on button boundaries
+          # and intermittently mis-tap the neighbor digit (e.g. tapping "3"
+          # instead of "2"), causing flaky self-reported test failures. A
+          # standard phone profile gives large, well-separated touch targets.
+          profile: pixel_7_pro
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
           script: agentprobe run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
