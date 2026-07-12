@@ -1,6 +1,6 @@
 # a-test
 
-[![Watch the demo](https://img.shields.io/badge/▶-Watch_the_demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/jssWwdsB5FA)
+[![Watch the demo](https://img.shields.io/badge/▶-Watch_the_demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/qFeNZg59QJ0)
 
 **Green CI. Broken app.** A passing checkmark is not proof your app works.
 
