@@ -17,8 +17,14 @@ case = TestCase(
         "3. Tap the digit 1, then 8 to enter 18. "
         "4. Tap the equals (=) button to compute. "
         "5. Verify the result 45 is displayed on screen. "
-        "Report TEST_PASSED once 45 appears on the display. "
-        "Report TEST_FAILED if the app crashes, shows an error, or 45 is not displayed."
+        "Taps can occasionally miss their target on a touchscreen -- this is normal. "
+        "After each tap, check the display: if it shows a digit or operator you did "
+        "not intend, tap DEL (or the clear/AC button) to remove the mistaken entry, "
+        "then retap the correct button and continue from where you left off. "
+        "Do not give up over a single misfired tap -- only report TEST_FAILED if the "
+        "app crashes, shows an error dialog, or you are unable to reach the correct "
+        "final result of 45 after several correction attempts. "
+        "Report TEST_PASSED once 45 appears on the display as the final result."
     ),
     successCriteria=[
         "The number 45 is displayed on the calculator screen",
@@ -26,10 +32,10 @@ case = TestCase(
     ],
     failureCriteria=[
         "App crashes or shows an error dialog",
-        "The display is blank or shows an incorrect result",
-        "The equals button press did not trigger calculation",
+        "The final result after pressing equals is not 45",
+        "The equals button press did not trigger any calculation",
     ],
-    maxSteps=15,
+    maxSteps=25,
 )
 
 if __name__ == "__main__":
