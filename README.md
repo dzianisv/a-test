@@ -1,8 +1,11 @@
 # a-test
 
-▶️ [Watch the demo video](https://youtu.be/jssWwdsB5FA)
+[![Watch the demo](https://img.shields.io/badge/▶-Watch_the_demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/jssWwdsB5FA)
 
-Autonomous AI Agent that automate Apps testing for you
+**Green CI. Broken app.** A passing checkmark is not proof your app works.
+
+agentprobe drives a real computer-use agent through your app like an actual user — tapping, typing, navigating — then an independent vision judge verifies what's actually on screen. It closes the gap between "tests passed" and "the app actually works."
+
 Models:
 - OpenAI models on Azure and api.openai.com
 - [H-Company](https://hub.hcompany.ai) Holo models `holo3-1-35b-a3b`, `holo3-122b-a10b`
@@ -18,6 +21,23 @@ Apps:
 
 An agent looks at screenshots, decides what to tap or type, and runs until the goal is met or the step budget is exhausted. When the run ends, a second vision call judges the final screenshot against the case's success criteria — so a `pass` means the result was actually confirmed on screen, not just claimed by the agent. The run produces a GIF you can inspect to see exactly where it succeeded or got confused.
 
+## Why this exists
+
+I've been building computer-use (CUA) end-to-end tests across my projects at
+[agentlabs.cc](https://agentlabs.cc) for a while — each one needing a different flavor of E2E
+coverage:
+
+- **[agentpod.agentlabs.cc](https://agentpod.agentlabs.cc)** — agent-pod flows
+- **[vibebrowser.app](https://vibebrowser.app)** — a Chrome extension / AI browser co-pilot
+- **[opencode.agentlabs.cc](https://opencode.agentlabs.cc)** — coding-agent workflows
+
+Every project ended up with its own hand-rolled CUA tests: different surfaces, different pass
+conditions, all requiring real end-to-end testing rather than mocks. For this hackathon I decided to
+**consolidate that knowledge, codebase, and expertise into one open-source CUA framework** — a single
+computer-use agent packaged as an easy-to-install, reusable **GitHub Action** so any codebase can be
+covered with real end-to-end tests. *(Reusable-action coverage across all three projects is still in
+progress.)*
+
 ## Demo: Agents in Action
 
 **Android**: Agent solves arithmetic (computes 27 + 18 = 45)
@@ -27,6 +47,14 @@ An agent looks at screenshots, decides what to tap or type, and runs until the g
 ![Chrome Extension Verification](assets/extension-vibe-cws.gif)
 
 ## Showcase
+
+### Android Calculator
+
+A real computer-use agent completes 27 + 18 = 45 in the Android Calculator app — a genuine CUA demo, not a static screenshot check.
+
+![Android calculator CUA demo](docs/showcase/android-calculator-math.gif)
+
+### Vibe AI Browser Co-Pilot
 
 **Vibe AI Browser Co-Pilot, end to end with CUA (10x speed)**: the agent installs the extension from the real Chrome Web Store on CI (Xvfb + xdotool real clicks + vision-based click targeting), opens the side panel, signs in to Vibe Portal with real keystrokes, then executes an agentic task — "go to duckduckgo and ask when a first gpt model were released" — navigating the browser to duckduckgo.com and answering GPT-1, June 2018, with the reply visible in the side panel. Every step is asserted (CDP page targets, `chrome.storage`, DOM transcript) and screen-recorded.
 
@@ -54,6 +82,7 @@ The pass/fail verdict is layered, not vibes-based:
 *Left: a real `xterm` running the published `chrome-sync login` CLI. Right: a real Chrome completing the `/auth/cli` form. Both recorded together in CI.* **▶ Watch the full video: [webm](https://github.com/dzianisv/agentprobe/releases/download/chrome-sync-login-demo/chrome-sync-login-dual-surface.webm) · [mp4](https://github.com/dzianisv/agentprobe/releases/download/chrome-sync-login-demo/chrome-sync-login-dual-surface.mp4)** — both validated by `core/validate-video.ts` (22.3s, decodes clean, non-blank). WebM is a streaming container natively, so it sidesteps the mp4 `moov`/`+faststart` "shows 0:00" pitfall entirely; the validator applies the faststart check only to mp4/mov.
 
 This runs on every push via the `cua-chrome-sync-login.yml` GitHub Actions workflow (green on `main`).
+A sibling workflow, [`cua-chrome-sync-login-hcompany.yml`](.github/workflows/cua-chrome-sync-login-hcompany.yml), runs the same case backed by H Company's Holo Models API (model `holo3-1-35b-a3b`) via the `HAI_API_KEY` repo secret, on `workflow_dispatch` plus a daily schedule rather than every push — see [docs/ci.md](docs/ci.md) for setup.
 Two supporting pieces make the recording trustworthy rather than just present:
 - **`core/validate-video.ts`** — proves the recording actually plays (duration, `+faststart`, clean
   decode, non-blank sampled frames) before anyone calls the video "done". See below.
@@ -64,7 +93,9 @@ Two supporting pieces make the recording trustworthy rather than just present:
 ## Computer-use models: H Company Holo
 
 agentprobe is model-agnostic (any OpenAI-compatible vision endpoint works), but it is built and
-verified to run on **[H Company](https://hub.hcompany.ai)'s computer-use models**.
+verified to run on **[H Company](https://hub.hcompany.ai)'s computer-use models**. H Company
+offers a free, rate-limited tier to get started — no upfront cost, no trial period, just a
+[key from the portal](https://portal.hcompany.ai) and you're running (see rate limits below).
 
 H Company's **Holo** models are *grounding/localization* specialists: given a screenshot and a
 short description of a UI element ("the Settings icon"), Holo returns exactly where to click.
@@ -258,6 +289,34 @@ jobs:
           name: cua-output
           path: /tmp/cua-output/
 ```
+
+### Desktop (Terminal + Browser) — one-liner via reusable action
+
+```yaml
+jobs:
+  cua-desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/agentprobe-desktop
+        with:
+          case: examples/dual-surface/chrome-sync-login.ts
+          output-dir: /tmp/cua-output
+          model: holo3-1-35b-a3b
+        env:
+          # Backend auto-detected in priority order: AZURE_CUA_API_KEY ->
+          # OPENAI_API_KEY -> HAI_API_KEY. HAI_BASE_URL is optional (defaults
+          # to https://api.hcompany.ai/v1/).
+          HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cua-output
+          path: /tmp/cua-output/
+```
+
+See [`.github/workflows/cua-chrome-sync-login-hcompany.yml`](.github/workflows/cua-chrome-sync-login-hcompany.yml) for a real example of this action running against H Company's free tier on a daily schedule, and [docs/ci.md](docs/ci.md#desktop-terminal--browser) for the complete reference (all three backend variants, required-secrets table).
 
 ### Manual setup (without the reusable action)
 
