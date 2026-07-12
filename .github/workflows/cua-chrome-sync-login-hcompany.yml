@@ -1,0 +1,72 @@
+name: CUA Chrome-Sync Login (H Company Holo)
+
+# Same test as cua-chrome-sync-login.yml (examples/dual-surface/chrome-sync-login.ts),
+# but backed by H Company's Holo Models API (https://hub.hcompany.ai) instead of
+# Azure/OpenAI for the final vision-judge call. Manual + scheduled only (not on
+# every push/PR) since it depends on the HAI_API_KEY repo secret, which may not
+# be configured on every fork, and exercises H Company's hosted free tier.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *' # daily smoke test of the H Company Holo backend
+
+jobs:
+  cua-chrome-sync-login-hcompany:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install agentprobe
+        run: pip install -e .
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install root deps
+        run: bun install
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb xdotool scrot ffmpeg xterm bsdutils
+          google-chrome --version
+          script --version
+
+      - name: Start Xvfb
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+
+      - name: Verify HAI_API_KEY secret is configured
+        env:
+          HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
+        run: |
+          if [ -z "$HAI_API_KEY" ]; then
+            echo "::error::HAI_API_KEY repository secret is not set. Create a key at https://portal.hcompany.ai and add it as a repo secret named HAI_API_KEY (see docs/ci.md)."
+            exit 1
+          fi
+
+      - name: Run chrome-sync login (terminal + browser) example against H Company Holo
+        env:
+          HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
+          DISPLAY: ":99"
+        run: |
+          bun run examples/dual-surface/chrome-sync-login.ts /tmp/chrome-sync-login-hcompany-output
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chrome-sync-login-hcompany-output-${{ github.run_number }}
+          path: /tmp/chrome-sync-login-hcompany-output/
+          retention-days: 14
+          if-no-files-found: warn
