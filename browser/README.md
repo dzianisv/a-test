@@ -4,7 +4,18 @@ This folder contains a Bun-based Computer Use (CUA) runner for real Google Chrom
 
 ## Prerequisites
 
-- `OPENAI_API_KEY` set
+- One actor credential to drive the interactive computer-use loop (Responses API,
+  `client.responses.create` with the `computer`/`computer_use_preview` tool):
+  - `AZURE_CUA_API_KEY` (+ optional `AZURE_CUA_BASE_URL`), or
+  - `AZURE_DEV_AI_API_KEY` + `AZURE_DEV_AI_BASE_URL` (an alternate Azure OpenAI
+    resource/deployment, e.g. sourced from `~/.env.d/azure-dev.env`), or
+  - `OPENAI_API_KEY` (+ optional `OPENAI_BASE_URL`)
+- Optionally, `HAI_API_KEY` (H Company's Holo Models API, https://hub.hcompany.ai)
+  to use Holo as an independent anti-hallucination verifier via Chat Completions
+  (`core/vision.ts`'s `visionJudge`, `apiStyle: "chat"`) instead of having the
+  actor re-check its own screenshot. Holo only implements `/chat/completions` (no
+  `/responses`), so `HAI_API_KEY` alone cannot drive the interactive loop -- it
+  must be set alongside one of the actor credentials above.
 - Unpacked extension directory (or unzip via `setup-chrome-profile.sh`)
 - Host dependencies installed (or run in `tests/cua/Dockerfile` image)
 

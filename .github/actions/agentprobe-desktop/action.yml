@@ -1,0 +1,144 @@
+name: 'agentprobe Desktop CUA'
+description: >-
+  Run agentprobe dual-surface (terminal + browser) CUA examples via bun.
+  The vision-judge backend is auto-detected at runtime by the script itself,
+  in priority order: AZURE_CUA_API_KEY (+ AZURE_CUA_BASE_URL), then
+  OPENAI_API_KEY (+ OPENAI_BASE_URL), then HAI_API_KEY (+ optional
+  HAI_BASE_URL — H Company Holo Models API, https://hub.hcompany.ai). Secrets
+  must be set in the calling job env — this action has no input for any API
+  key.
+
+inputs:
+  case:
+    description: 'Path to the dual-surface TS script to run (e.g. examples/dual-surface/chrome-sync-login.ts)'
+    required: true
+  output-dir:
+    description: 'Directory for screenshots, demo.gif, recording, result files'
+    default: '/tmp/agentprobe-output'
+  model:
+    description: 'Azure OpenAI model deployment name (also passed as CUA_MODEL for OpenAI/H Company runs)'
+    default: 'gpt-5.4'
+  hai-base-url:
+    description: 'Optional override for the H Company Holo Models API base URL (HAI_BASE_URL); leave empty to use the script''s own default (https://api.hcompany.ai/v1/)'
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Install agentprobe
+      shell: bash
+      run: pip install agentprobe
+
+    - name: Resolve dual-surface runner source (local vs. remote invocation)
+      id: source
+      shell: bash
+      env:
+        # github.action_repository / github.action_ref are ONLY populated
+        # when this action is referenced remotely, e.g.
+        # `uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@v1`
+        # from a downstream consumer's own workflow (GitHub Actions docs:
+        # "the owner and repository name of the action" / "the ref of the
+        # action being executed"). For a LOCAL reference
+        # (`uses: ./.github/actions/agentprobe-desktop`, used by this repo's
+        # own cua-*.yml workflows), there is no separate action repo to name,
+        # so both are empty strings. Per GitHub's own guidance ("Do not use
+        # [action_ref/action_repository] in the run keyword. To make this
+        # context work with composite actions, reference it within the env
+        # context..."), they are captured here via `env:` rather than
+        # interpolated directly into a `run:` script body.
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [ -n "$ACTION_REPOSITORY" ]; then
+          # Remote consumer: this action's own code was fetched from
+          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching dual-surface
+          # runner (core/surfaces/examples) from that SAME repo+ref into a
+          # dedicated _agentprobe checkout — keeping the runner pinned in
+          # lockstep with whatever version of this action the consumer chose,
+          # instead of silently drifting to dzianisv/agentprobe's default
+          # branch regardless of pinning.
+          echo "mode=remote" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}/_agentprobe" >> "$GITHUB_OUTPUT"
+        else
+          # Local invocation: the calling workflow's own `actions/checkout`
+          # step already placed the exact revision under test (this IS the
+          # agentprobe repo — core/surfaces/examples/dual-surface live at the
+          # workspace root) — reuse it directly instead of re-fetching a
+          # second, potentially-stale copy of the remote default branch.
+          echo "mode=local" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+        fi
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/agentprobe}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout dual-surface runner (remote consumers only)
+      if: steps.source.outputs.mode == 'remote'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ steps.source.outputs.repository }}
+        ref: ${{ steps.source.outputs.ref }}
+        path: _agentprobe
+        sparse-checkout: |
+          core
+          surfaces
+          examples/dual-surface
+          package.json
+          bun.lock
+          tsconfig.json
+
+    - name: Install bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install desktop runner deps
+      shell: bash
+      env:
+        AGENTPROBE_DESKTOP_DIR: ${{ steps.source.outputs.dir }}
+      run: cd "$AGENTPROBE_DESKTOP_DIR" && bun install
+
+    - name: Install system deps
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb xdotool scrot ffmpeg xterm bsdutils
+        google-chrome --version
+        script --version
+
+    - name: Start Xvfb
+      shell: bash
+      run: |
+        Xvfb :99 -screen 0 1920x1080x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
+
+    - name: Run CUA test (terminal + browser)
+      shell: bash
+      env:
+        # steps.source.outputs.dir (set above) resolves to the workspace root
+        # for a local invocation (this repo IS agentprobe — reuse the exact
+        # revision under test) or to the dedicated ./_agentprobe checkout for
+        # a remote consumer — see the "Resolve dual-surface runner source"
+        # step for the full local-vs-remote rationale.
+        AGENTPROBE_DESKTOP_DIR: ${{ steps.source.outputs.dir }}
+        CUA_MODEL: ${{ inputs.model }}
+        DISPLAY: ':99'
+        # All `inputs.*` are threaded through `env:` rather than interpolated
+        # directly into the script body below: GitHub Actions substitutes
+        # `${{ }}` expressions as raw text before the shell ever parses the
+        # script, so an unquoted (or improperly quoted) inline interpolation
+        # of a caller-supplied input is a classic script-injection vector.
+        # Reading them back as ordinary quoted shell variables avoids that.
+        CASE_INPUT: ${{ inputs.case }}
+        OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
+        HAI_BASE_URL_INPUT: ${{ inputs.hai-base-url }}
+      run: |
+        # HAI_BASE_URL is only exported when non-empty: the script does
+        # `process.env.HAI_BASE_URL ?? "https://api.hcompany.ai/v1/"`, and `??`
+        # only falls back on null/undefined, not on an empty string — so a
+        # blank HAI_BASE_URL env var would silently override the script's own
+        # default with "". Setting it conditionally here preserves that default.
+        if [ -n "$HAI_BASE_URL_INPUT" ]; then
+          export HAI_BASE_URL="$HAI_BASE_URL_INPUT"
+        fi
+        cd "$AGENTPROBE_DESKTOP_DIR"
+        bun run "$CASE_INPUT" "$OUTPUT_DIR_INPUT"

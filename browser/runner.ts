@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import OpenAI from "openai";
 import sharp from "sharp";
+import { createVisionClient, visionJudge, type VisionClient } from "../core/vision";
 
 type RunnerArgs = {
   testCase: string;
@@ -591,7 +592,16 @@ async function verifyResult(
   client: OpenAI,
   model: string,
   verification: Verification,
-  outputDir: string
+  outputDir: string,
+  // Optional independent judge (H Company Holo via Chat Completions, see
+  // core/vision.ts). When provided, it is used INSTEAD of `client`/`model`
+  // for this verification call, reusing core/vision.ts's already-correct
+  // Holo wire format (structured_outputs/chat_template_kwargs) rather than
+  // the Responses API path below -- Holo has no /responses endpoint (see
+  // https://hub.hcompany.ai/api-reference). When omitted, behavior is
+  // byte-identical to before this option existed: `client`/`model` verifies
+  // its own actor loop via the Responses API, unchanged.
+  haiVision?: VisionClient
 ): Promise<VerificationResult> {
   // Fresh screenshot — NOT the last loop screenshot. The agent may have
   // emitted TEST_PASSED while looking at a wrong page (e.g. Gmail) and the
@@ -607,22 +617,32 @@ async function verifyResult(
   };
 
   try {
-    const response = (await client.responses.create({
-      model,
-      input: [
-        {
-          role: "user",
-          content: [
-            { type: "input_text", text: verification.prompt },
-            { type: "input_image", image_url: `data:image/png;base64,${b64}` }
-          ]
-        }
-      ]
-    })) as unknown as ResponseLike;
+    if (haiVision) {
+      const judgement = await visionJudge(haiVision, screenshotPath, verification.prompt, {
+        outputDir,
+        label: "runner-verify"
+      });
+      result.raw = judgement.verdict;
+      result.passed = judgement.verdict === "YES";
+      result.evidence = judgement.evidence;
+    } else {
+      const response = (await client.responses.create({
+        model,
+        input: [
+          {
+            role: "user",
+            content: [
+              { type: "input_text", text: verification.prompt },
+              { type: "input_image", image_url: `data:image/png;base64,${b64}` }
+            ]
+          }
+        ]
+      })) as unknown as ResponseLike;
 
-    result.raw = String(response.output_text ?? "").trim();
-    result.passed = result.raw.toUpperCase().startsWith("YES");
-    result.evidence = result.raw.length > 4 ? result.raw.slice(3).trim().replace(/^[.\-:\s]+/, "") : result.raw;
+      result.raw = String(response.output_text ?? "").trim();
+      result.passed = result.raw.toUpperCase().startsWith("YES");
+      result.evidence = result.raw.length > 4 ? result.raw.slice(3).trim().replace(/^[.\-:\s]+/, "") : result.raw;
+    }
   } catch (err) {
     // Verification API failure must FAIL the test, not silently pass.
     result.passed = false;
@@ -812,11 +832,35 @@ async function waitForChromeReady(timeoutMs = 20000): Promise<void> {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
 
-  // Support both Azure CUA and standard OpenAI. Azure takes precedence.
+  // Actor credential: drives the interactive computer-use loop below via the
+  // OpenAI Responses API's computer-use tool. Precedence: AZURE_CUA_API_KEY
+  // (existing, unchanged) > AZURE_DEV_AI_API_KEY (an alternate Azure OpenAI
+  // resource/deployment -- same Responses API wire format, just a different
+  // base URL, e.g. sourced from ~/.env.d/azure-dev.env) > OPENAI_API_KEY
+  // (existing, unchanged). HAI_API_KEY (H Company's Holo Models API) is NOT
+  // eligible here: Holo only implements POST /chat/completions -- no
+  // /responses endpoint (https://hub.hcompany.ai/api-reference) -- so it
+  // cannot drive this tool-calling loop. It is wired in below as an
+  // independent anti-hallucination verifier instead.
   const azureKey = process.env.AZURE_CUA_API_KEY;
+  const azureDevKey = process.env.AZURE_DEV_AI_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
-  if (!azureKey && !openaiKey) {
-    throw new Error("Either AZURE_CUA_API_KEY or OPENAI_API_KEY is required");
+  const haiKey = process.env.HAI_API_KEY;
+  if (!azureKey && !azureDevKey && !openaiKey) {
+    throw new Error(
+      "An actor credential is required to drive the interactive computer-use loop: " +
+        "AZURE_CUA_API_KEY (+ AZURE_CUA_BASE_URL), AZURE_DEV_AI_API_KEY (+ AZURE_DEV_AI_BASE_URL), " +
+        "or OPENAI_API_KEY." +
+        (haiKey
+          ? " HAI_API_KEY is set, but H Company's Holo API only implements Chat Completions " +
+            "(no /responses endpoint) and cannot drive this runner's tool-calling loop on its own -- " +
+            "it is only usable here as the anti-hallucination verifier alongside one of the actor " +
+            "credentials above."
+          : "")
+    );
+  }
+  if (azureDevKey && !process.env.AZURE_DEV_AI_BASE_URL) {
+    throw new Error("AZURE_DEV_AI_API_KEY requires AZURE_DEV_AI_BASE_URL to be set");
   }
 
   const testCase = await loadTestCase(args.testCase);
@@ -826,18 +870,49 @@ async function main(): Promise<void> {
   await mkdir(args.outputDir, { recursive: true });
 
   const clientOptions: ConstructorParameters<typeof OpenAI>[0] = {
-    apiKey: azureKey ?? openaiKey ?? ""
+    apiKey: azureKey ?? azureDevKey ?? openaiKey ?? ""
   };
+  let actorSource: "azure-cua" | "azure-dev-ai" | "openai";
   if (azureKey) {
+    actorSource = "azure-cua";
     clientOptions.baseURL = process.env.AZURE_CUA_BASE_URL ?? "https://vibe-dev-ai.cognitiveservices.azure.com/openai/v1";
-  } else if (process.env.OPENAI_BASE_URL) {
-    clientOptions.baseURL = process.env.OPENAI_BASE_URL;
+  } else if (azureDevKey) {
+    actorSource = "azure-dev-ai";
+    clientOptions.baseURL = process.env.AZURE_DEV_AI_BASE_URL;
+  } else {
+    actorSource = "openai";
+    if (process.env.OPENAI_BASE_URL) clientOptions.baseURL = process.env.OPENAI_BASE_URL;
   }
   const client = new OpenAI(clientOptions);
 
-  // Default model: gpt-5.4 for Azure, gpt-4o for plain OpenAI
-  const CUA_MODEL = process.env.CUA_MODEL ?? (azureKey ? "gpt-5.4-2026-03-05" : "gpt-4o");
+  // Default model: gpt-5.4 for Azure CUA, gpt-4o-2024-11-20 for the
+  // AZURE_DEV_AI resource (matches the deployment registered for it in
+  // bench/backends.yaml), gpt-4o for plain OpenAI.
+  const CUA_MODEL =
+    process.env.CUA_MODEL ?? (azureKey ? "gpt-5.4-2026-03-05" : azureDevKey ? "gpt-4o-2024-11-20" : "gpt-4o");
   const CUA_TOOL_TYPE = process.env.CUA_TOOL_TYPE ?? (CUA_MODEL.startsWith("gpt-5") ? "computer" : "computer_use_preview");
+  console.log(`[runner] actor provider=${actorSource} model=${CUA_MODEL} toolType=${CUA_TOOL_TYPE}`);
+
+  // Independent anti-hallucination verifier: when HAI_API_KEY is present,
+  // Holo (via core/vision.ts's Chat Completions "chat" apiStyle) judges the
+  // final screenshot instead of the actor re-checking its own work -- a
+  // differently-sourced judge is a stronger guard against correlated
+  // hallucination than self-verification. Reuses core/vision.ts verbatim
+  // (createVisionClient/visionJudge), so H Company's Holo-specific wire
+  // fields (structured_outputs, chat_template_kwargs) are already handled
+  // correctly there. When HAI_API_KEY is absent, verification falls back to
+  // the actor client/model exactly as before this option existed.
+  const haiVision: VisionClient | undefined = haiKey
+    ? createVisionClient({
+        apiKey: haiKey,
+        baseURL: process.env.HAI_BASE_URL ?? "https://api.hcompany.ai/v1/",
+        model: process.env.HAI_MODEL ?? "holo3-1-35b-a3b",
+        apiStyle: "chat"
+      })
+    : undefined;
+  if (haiVision) {
+    console.log(`[runner] verification will use H Company Holo (HAI_API_KEY) model=${haiVision.model} via Chat Completions`);
+  }
 
   let lastResponseId: string | undefined;
   const logs: string[] = [];
@@ -995,7 +1070,8 @@ async function main(): Promise<void> {
           client,
           CUA_MODEL,
           { prompt: verifierPrompt },
-          args.outputDir
+          args.outputDir,
+          haiVision
         );
         if (!verification.passed) {
           completion = {
