@@ -1,0 +1,35 @@
+name: vibe-cws-listing
+# Smoke test: verify the Vibe extension listing is accessible on the Chrome Web Store.
+# Chrome must be signed in to a Google account to actually install extensions,
+# so this test verifies the listing loads and the extension is published — not installation.
+#
+# Extension IDs:
+#   CWS (published): djodpgokbmobeclicaicnnidccoinado
+#   CDN/dev unpacked: ajfjlohdpfgngdjfafhhcnpmijbbdgln
+url: https://chromewebstore.google.com/detail/vibe-ai-browser-co-pilot/djodpgokbmobeclicaicnnidccoinado
+goal: >
+  The browser is open at the Chrome Web Store listing for Vibe AI Browser Co-Pilot.
+  Wait for the page to fully load, then confirm the extension listing is accessible.
+  Steps:
+  1. Verify the page shows the Vibe extension name (Vibe, Vibe AI, or Vibe AI Browser Co-Pilot).
+  2. Verify an "Add to Chrome" button is present on the page.
+  3. Verify no error (404, "Item not found", "Not available") is shown.
+  4. Report TEST_PASSED once the listing is confirmed accessible with the Add to Chrome button visible.
+  5. Report TEST_FAILED if the page shows an error, 404, or the extension is not found.
+successCriteria:
+  - The Chrome Web Store page loads for the Vibe extension
+  - The extension name (Vibe, Vibe AI, or similar) is visible on the page
+  - An "Add to Chrome" button is present on the page
+  - No error or "Item not found" message is shown
+failureCriteria:
+  - Page shows a 404 or "Item not found" error
+  - Chrome Web Store shows "No search results" or a search page instead of the listing
+  - The extension listing is unavailable or has been removed
+verification:
+  prompt: >
+    Does this screenshot show a Chrome Web Store extension listing for Vibe (or Vibe AI Browser Co-Pilot)?
+    Look for: the Vibe extension name, an icon, and an "Add to Chrome" button.
+    A correctly loaded listing page counts as success even if the user is not signed in.
+    Answer YES or NO, then one sentence of evidence.
+maxSteps: 8
+defaultWaitMs: 2000

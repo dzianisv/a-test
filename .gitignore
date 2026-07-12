@@ -1,0 +1,28 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+node_modules/
+dist/
+build/
+*.egg-info/
+.env
+.env.*
+/tmp/agentprobe-output/
+*.gif
+*.mp4
+step-*.png
+stage-*.png
+
+# Keep committed example screenshots
+!examples/screenshots/**/*.png
+!examples/screenshots/**/*.gif
+
+# Keep committed showcase assets
+!docs/showcase/**/*.gif
+
+# Agent/IDE tooling
+.agents/
+.claude/
+.supervisor/

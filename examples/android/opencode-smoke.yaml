@@ -1,0 +1,31 @@
+name: opencode-smoke
+package: cc.agentlabs.opencode
+# Install: downloaded from F-Droid repo and `adb install`ed by the CI workflow before this test runs.
+# F-Droid repo: https://dzianisv.github.io/opencode-mobile/fdroid/repo/
+#
+# This test derives its scenario from examples/android/opencode_checks.py:
+# the same "create hello.py" task is used so the vision judge and the
+# optional REST-API check both verify the same agent action.
+goal: >
+  The opencode app has been launched. Verify it is showing its main UI.
+  Steps:
+  1. Confirm the opencode app is in the foreground (look for a chat input, session list,
+     or main screen — not the system launcher or a crash dialog).
+  2. If a telemetry or consent dialog is visible, dismiss it.
+  3. Confirm the app UI has rendered — not a blank white or black screen.
+  4. Report TEST_PASSED once the main UI is visible and stable.
+successCriteria:
+  - The opencode app is open and the main screen or chat interface is visible
+  - No crash dialogs, error toasts, or ANR (app not responding) dialogs are visible
+  - The UI has rendered — not a blank white or black screen
+failureCriteria:
+  - App fails to launch or crashes on startup
+  - ANR dialog or "App isn't responding" prompt appears
+  - App shows only a blank white or black screen with no UI elements after 30 seconds
+verification:
+  prompt: >
+    Does this screenshot show the opencode mobile app with its main UI visible —
+    such as a chat input field, session list, or home screen? A crash dialog, ANR prompt,
+    blank screen, or system launcher (no app open) counts as failure.
+    Answer YES or NO, then one sentence of evidence.
+maxSteps: 15

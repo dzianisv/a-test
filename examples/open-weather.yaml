@@ -1,0 +1,22 @@
+name: open-weather
+url: https://wttr.in/New+York
+goal: >
+  The browser is open at wttr.in/New+York. Wait for the page to finish loading,
+  then confirm a weather forecast for New York is visible.
+  The page typically shows an ASCII-art style weather table with temperature values
+  in °F or °C, cloud/sun icons, and a location header.
+  Report TEST_PASSED once any temperature value and the city name are visible.
+  Report TEST_FAILED only if the page fails to load (network error, empty page, or 404).
+defaultWaitMs: 3000
+maxSteps: 10
+successCriteria:
+  - A temperature value (°F or °C) is visible on screen
+  - A city name or location for New York is visible
+failureCriteria:
+  - Page fails to load, shows a network error, or a 404/500 response
+verification:
+  prompt: >
+    Does this screenshot show a weather forecast page for New York with at least
+    one temperature value visible (a number followed by °F or °C)?
+    The page may use ASCII art or plain text style — that is fine.
+    Answer YES or NO, then one sentence of evidence.

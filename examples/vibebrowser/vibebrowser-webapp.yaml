@@ -1,0 +1,26 @@
+name: vibebrowser-webapp-smoke
+url: https://vibebrowser.app
+goal: >
+  Navigate to vibebrowser.app and verify the product landing page loads correctly.
+  Steps:
+  1. The browser should open at https://vibebrowser.app.
+  2. Wait for the page to fully load — look for the VibeBrowser or Vibe product name, logo, or hero section.
+  3. Scroll down to verify there is real product content: features, screenshots, pricing, or marketing text.
+  4. Confirm there are no error pages (404, 500, maintenance, "coming soon" placeholder).
+  5. Report TEST_PASSED once the landing page is confirmed as working with real product content visible.
+successCriteria:
+  - The vibebrowser.app page loads without errors
+  - Vibe or VibeBrowser branding (name, logo, or product description) is visible
+  - Page has real product content — not a placeholder, 404, or maintenance page
+failureCriteria:
+  - Page fails to load or connection times out
+  - A 404, 500, or Cloudflare error page is displayed
+  - The page shows a maintenance or "coming soon" placeholder with no product content
+verification:
+  prompt: >
+    Does this screenshot show the vibebrowser.app website loaded successfully with real
+    product content visible — such as the Vibe or VibeBrowser name, logo, product
+    description, features, or any marketing content? A blank page, 404, 500, or
+    maintenance placeholder counts as failure.
+    Answer YES or NO, then one sentence of evidence.
+maxSteps: 20
