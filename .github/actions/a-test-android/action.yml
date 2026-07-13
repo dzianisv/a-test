@@ -106,8 +106,18 @@ runs:
         profile: ${{ inputs.profile }}
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
         disable-animations: true
-        script: |
-          if [ -n "${{ inputs.apk-path }}" ]; then
-            adb install -r "${{ inputs.apk-path }}"
-          fi
-          a-test run --target android --case ${{ inputs.case }} --output-dir ${{ inputs.output-dir }}
+        # NOTE: this must be a SINGLE-LINE script, not a `|` block scalar.
+        # GitHub Actions composite actions have a documented limitation where
+        # a multi-line `with:` value (here, containing embedded newlines)
+        # passed to a NESTED action's `with:` field can be truncated to just
+        # its first line by the time the nested action receives it -- this
+        # was discovered for real by dogfooding this composite action for
+        # the first time (see android-cua.yml), which surfaced
+        # "sh: Syntax error: end of file unexpected (expecting fi)" because
+        # only "if [ -n "" ]; then" survived and the rest of a previous
+        # multi-line if/fi block was silently dropped. Collapsing to one
+        # line via `;`/`&&` (equivalent to the old if/fi block: install the
+        # optional APK first if apk-path is set, then always run the case
+        # regardless of that install's exit status) avoids the bug
+        # entirely, regardless of its exact root cause.
+        script: '[ -n "${{ inputs.apk-path }}" ] && adb install -r "${{ inputs.apk-path }}"; a-test run --target android --case ${{ inputs.case }} --output-dir ${{ inputs.output-dir }}'
