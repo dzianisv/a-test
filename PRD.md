@@ -1,4 +1,4 @@
-# agentprobe — Product Requirements Document
+# a-test — Product Requirements Document
 
 ## Problem
 
@@ -8,7 +8,7 @@ Testing Android apps and web apps today requires either:
 
 Computer-use AI agents can drive any UI without selectors. But wiring a vision model into a test harness (screencap → LLM → action → repeat → judge) requires non-trivial infrastructure that every team rebuilds from scratch.
 
-**agentprobe** is that infrastructure, packaged and reusable.
+**a-test** is that infrastructure, packaged and reusable.
 
 ---
 
@@ -34,7 +34,7 @@ Ship a single installable package that lets any developer write a CUA test case 
 
 **Python (Android + browser):**
 ```bash
-pip install agentprobe
+pip install a-test
 ```
 
 **Node / Bun (browser-only, zero-Python option):**
@@ -42,8 +42,8 @@ pip install agentprobe
 The browser runner is a Bun/TypeScript script — it is not published to npm (`package.json` is `private: true`). Clone the repo and invoke it directly:
 
 ```bash
-git clone https://github.com/dzianisv/agentprobe
-cd agentprobe
+git clone https://github.com/dzianisv/a-test
+cd a-test
 bun install
 bun browser/runner.ts --test-case examples/open-weather.yaml --output-dir /tmp/out
 ```
@@ -86,23 +86,23 @@ maxSteps: 10
 
 ```bash
 # Android (device or emulator connected via adb)
-agentprobe run --target android --case examples/android-settings.yaml
+a-test run --target android --case examples/android-settings.yaml
 
 # Browser web app
-agentprobe run --target browser --case examples/open-weather.yaml
+a-test run --target browser --case examples/open-weather.yaml
 
 # Browser — extension install from CWS (agent installs through browser UI)
-agentprobe run --target browser \
+a-test run --target browser \
   --case examples/vibebrowser/vibe-install-smoke.yaml
 ```
 
 Extensions are installed through the Chrome Web Store UI by the CUA agent — there is no `--extension` / `--load-extension` flag. For dev builds, navigate the agent to `chrome://extensions` and have it load the unpacked directory through the UI.
 
-`python -m agentprobe` is equivalent to `agentprobe`.
+`python -m a_test` is equivalent to `a-test`.
 
 ### Output
 
-Every run writes to `--output-dir` (default: `/tmp/agentprobe-output/`):
+Every run writes to `--output-dir` (default: `/tmp/a-test-output/`):
 
 | File | Target | Contents |
 |---|---|---|
@@ -119,7 +119,7 @@ Exit code: `0` = pass, `1` = fail.
 ### Python API
 
 ```python
-from agentprobe import TestCase, Verification, run_case
+from a_test import TestCase, Verification, run_case
 
 case = TestCase(
     name="open-weather",
@@ -140,7 +140,7 @@ assert result["verdict"] == "pass", result["reason"]
 
 ```python
 # conftest.py or test_flows.py
-from agentprobe import TestCase, Verification
+from a_test import TestCase, Verification
 
 def test_open_weather(cua_case):  # fixture auto-registered on pip install
     case = TestCase(
@@ -174,7 +174,7 @@ This two-stage design means the agent can never "claim done" and pass — an ind
 
 ## Pilot Projects
 
-Three real-world products use agentprobe as their primary CUA test harness. Each runs in GitHub Actions CI.
+Three real-world products use a-test as their primary CUA test harness. Each runs in GitHub Actions CI.
 
 ### 1. opencode Android App
 
@@ -261,9 +261,9 @@ Three real-world products use agentprobe as their primary CUA test harness. Each
 
 ## Success Metrics (v1)
 
-- `pip install agentprobe && agentprobe run --target android --case examples/android-settings.yaml` produces a pass verdict + GIF on a connected emulator.
-- `agentprobe run --target browser --case examples/open-weather.yaml` produces a pass verdict + GIF in a headless Chrome environment.
-- A CI GitHub Actions workflow using agentprobe runs in under 5 minutes per test case.
+- `pip install a-test && a-test run --target android --case examples/android-settings.yaml` produces a pass verdict + GIF on a connected emulator.
+- `a-test run --target browser --case examples/open-weather.yaml` produces a pass verdict + GIF in a headless Chrome environment.
+- A CI GitHub Actions workflow using a-test runs in under 5 minutes per test case.
 - A developer with no prior knowledge can write a working YAML test case by reading the README alone.
-- `agentprobe run --target android --case examples/android/opencode-smoke.yaml` installs the opencode app from F-Droid and produces a pass verdict against a real Android emulator in CI.
-- `agentprobe run --target browser --case examples/vibebrowser/vibe-install-smoke.yaml` and `examples/vibebrowser/vibebrowser-webapp.yaml` produce pass verdicts verifying the Vibe extension CWS install and the vibebrowser.app landing page.
+- `a-test run --target android --case examples/android/opencode-smoke.yaml` installs the opencode app from F-Droid and produces a pass verdict against a real Android emulator in CI.
+- `a-test run --target browser --case examples/vibebrowser/vibe-install-smoke.yaml` and `examples/vibebrowser/vibebrowser-webapp.yaml` produce pass verdicts verifying the Vibe extension CWS install and the vibebrowser.app landing page.

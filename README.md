@@ -5,7 +5,7 @@
 
 **Stop pet-sitting your AI coding agent.**
 
-AI coding agents write code fast, but a green CI run doesn't prove the app actually works — someone still has to babysit the PR and click through it by hand. agentprobe turns your product's user journeys — the ones already scoped in a PRD — into computer-use test cases committed as YAML, then executes them in CI to drive the real app: clicking, typing, waiting, and verifying what's actually on screen.
+AI coding agents write code fast, but a green CI run doesn't prove the app actually works — someone still has to babysit the PR and click through it by hand. a-test turns your product's user journeys — the ones already scoped in a PRD — into computer-use test cases committed as YAML, then executes them in CI to drive the real app: clicking, typing, waiting, and verifying what's actually on screen.
 
 That's what gates bad AI-written PRs before they reach production. Every run leaves behind screenshots, a video, and a GIF, plus an independent vision-model verdict — not brittle selectors or a "looks good to me" review.
 
@@ -82,7 +82,7 @@ A real computer-use agent completes 27 + 18 = 45 in the Android Calculator app �
 
 ![Vibe CUA End-to-End Showcase](docs/showcase/vibe-cua-e2e.gif)
 
-Reference implementation: `tests/cua/cws-visual-install.ts` in [VibeTechnologies/VibeWebAgent PR #1504](https://github.com/VibeTechnologies/VibeWebAgent/pull/1504); extraction of these primitives into agentprobe core is tracked in [issue #1](https://github.com/dzianisv/agentprobe/issues/1).
+Reference implementation: `tests/cua/cws-visual-install.ts` in [VibeTechnologies/VibeWebAgent PR #1504](https://github.com/VibeTechnologies/VibeWebAgent/pull/1504); extraction of these primitives into a-test core is tracked in [issue #1](https://github.com/dzianisv/a-test/issues/1).
 
 ### OpenCode Mobile: Android onboarding + real coding task
 
@@ -111,27 +111,27 @@ The pass/fail verdict is layered, not vibes-based:
 
 ![chrome-sync dual-surface login demo](docs/showcase/chrome-sync-login-dual-surface.gif)
 
-*Left: a real `xterm` running the published `chrome-sync login` CLI. Right: a real Chrome completing the `/auth/cli` form. Both recorded together in CI.* **▶ Watch the full video: [webm](https://github.com/dzianisv/agentprobe/releases/download/chrome-sync-login-demo/chrome-sync-login-dual-surface.webm) · [mp4](https://github.com/dzianisv/agentprobe/releases/download/chrome-sync-login-demo/chrome-sync-login-dual-surface.mp4)** — both validated by `core/validate-video.ts` (22.3s, decodes clean, non-blank). WebM is a streaming container natively, so it sidesteps the mp4 `moov`/`+faststart` "shows 0:00" pitfall entirely; the validator applies the faststart check only to mp4/mov.
+*Left: a real `xterm` running the published `chrome-sync login` CLI. Right: a real Chrome completing the `/auth/cli` form. Both recorded together in CI.* **▶ Watch the full video: [webm](https://github.com/dzianisv/a-test/releases/download/chrome-sync-login-demo/chrome-sync-login-dual-surface.webm) · [mp4](https://github.com/dzianisv/a-test/releases/download/chrome-sync-login-demo/chrome-sync-login-dual-surface.mp4)** — both validated by `core/validate-video.ts` (22.3s, decodes clean, non-blank). WebM is a streaming container natively, so it sidesteps the mp4 `moov`/`+faststart` "shows 0:00" pitfall entirely; the validator applies the faststart check only to mp4/mov.
 
 This runs on every push via the `cua-chrome-sync-login.yml` GitHub Actions workflow (green on `main`).
 A sibling workflow, [`cua-chrome-sync-login-hcompany.yml`](.github/workflows/cua-chrome-sync-login-hcompany.yml), runs the same case backed by H Company's Holo Models API (model `holo3-1-35b-a3b`) via the `HAI_API_KEY` repo secret, on `workflow_dispatch` plus a daily schedule rather than every push — see [docs/ci.md](docs/ci.md) for setup.
 Two supporting pieces make the recording trustworthy rather than just present:
 - **`core/validate-video.ts`** — proves the recording actually plays (duration, `+faststart`, clean
   decode, non-blank sampled frames) before anyone calls the video "done". See below.
-- **[`skills/agentprobe-video-github-upload/SKILL.md`](skills/agentprobe-video-github-upload/SKILL.md)** —
+- **[`skills/a-test-video-github-upload/SKILL.md`](skills/a-test-video-github-upload/SKILL.md)** —
   how to get that recording onto a GitHub PR/issue/Release and validate the *served* bytes, not just the
   local file.
 
 ## Computer-use models: H Company Holo
 
-agentprobe is model-agnostic (any OpenAI-compatible vision endpoint works), but it is built and
+a-test is model-agnostic (any OpenAI-compatible vision endpoint works), but it is built and
 verified to run on **[H Company](https://hub.hcompany.ai)'s computer-use models**. H Company
 offers a free, rate-limited tier to get started — no upfront cost, no trial period, just a
 [key from the portal](https://portal.hcompany.ai) and you're running (see rate limits below).
 
 H Company's **Holo** models are *grounding/localization* specialists: given a screenshot and a
 short description of a UI element ("the Settings icon"), Holo returns exactly where to click.
-agentprobe pairs Holo with a lightweight planner in a **two-tier loop** — the planner decides
+a-test pairs Holo with a lightweight planner in a **two-tier loop** — the planner decides
 *what* to do next, Holo resolves *where* on screen it is — so every tap lands on a real,
 model-chosen pixel rather than a guessed coordinate.
 
@@ -140,8 +140,8 @@ model-chosen pixel rather than a guessed coordinate.
 | **Grounder** | screenshot + element description → click coords | `holo3-1-35b-a3b` (free tier, 5 req/min) |
 | **Planner** | decides the next action from the goal + screen | any OpenAI-compatible vision chat model |
 
-Holo returns coordinates normalized to `[0, 1000]`; agentprobe scales them to real pixels
-(`agentprobe/grounding.py:scale_holo_coords`) and throttles calls to respect the free-tier rate
+Holo returns coordinates normalized to `[0, 1000]`; a-test scales them to real pixels
+(`a_test/grounding.py:scale_holo_coords`) and throttles calls to respect the free-tier rate
 limit (`HoloRateLimiter`).
 
 ```bash
@@ -169,7 +169,7 @@ reusable action in [docs/ci.md](docs/ci.md), which auto-detects `HAI_API_KEY` al
 ## Install
 
 ```bash
-pip install agentprobe          # Python Android runner
+pip install a-test              # Python Android runner
 ```
 
 The browser backend is a Bun/TypeScript runner that lives in `browser/` and runs from
@@ -177,8 +177,8 @@ a repo checkout — it is not shipped inside the pip package. For `--target brow
 clone the repo and install [bun](https://bun.sh):
 
 ```bash
-git clone https://github.com/dzianisv/agentprobe
-cd agentprobe
+git clone https://github.com/dzianisv/a-test
+cd a-test
 pip install -e .
 cd browser && bun install
 ```
@@ -192,12 +192,12 @@ export AZURE_CUA_API_KEY=...
 export AZURE_CUA_BASE_URL=https://<your-resource>.openai.azure.com/
 export AZURE_CUA_MODEL=gpt-5.4
 
-agentprobe run \
+a-test run \
   --target android \
   --case examples/android/basic_smoke.py \
-  --output-dir /tmp/agentprobe-output
+  --output-dir /tmp/a-test-output
 
-open /tmp/agentprobe-output/demo.gif
+open /tmp/a-test-output/demo.gif
 ```
 
 ## Quickstart: Browser
@@ -209,12 +209,12 @@ export AZURE_CUA_API_KEY=...
 export AZURE_CUA_BASE_URL=https://<your-resource>.openai.azure.com/
 export AZURE_CUA_MODEL=gpt-5.4
 
-agentprobe run \
+a-test run \
   --target browser \
   --case examples/open-weather.yaml \
-  --output-dir /tmp/agentprobe-output
+  --output-dir /tmp/a-test-output
 
-open /tmp/agentprobe-output/demo.gif
+open /tmp/a-test-output/demo.gif
 ```
 
 To test a Chrome extension: write a YAML case whose goal navigates Chrome to the
@@ -224,7 +224,7 @@ agent installs it through the browser UI, just like a user would.
 ## Example test case
 
 ```python
-from agentprobe import TestCase, run_case
+from a_test import TestCase, run_case
 
 case = TestCase(
     name="basic_smoke",
@@ -235,7 +235,7 @@ case = TestCase(
     maxSteps=15,
 )
 
-result = run_case(case, output_dir="/tmp/agentprobe-output")
+result = run_case(case, output_dir="/tmp/a-test-output")
 print(result["verdict"], "--", result["reason"])
 # pass -- YES. The calculator shows 8 after tapping 5 + 3 =.
 ```
@@ -248,7 +248,7 @@ the final screenshot, assembles `demo.gif`, and writes `result.json`.
 Install Pillow to add text overlays showing the agent's reasoning at each step:
 
 ```bash
-pip install agentprobe[gif-captions]
+pip install a-test[gif-captions]
 ```
 
 With Pillow installed, `demo.gif` will include text annotations:
@@ -263,7 +263,7 @@ This makes demos much more educational — viewers see the agent's reasoning in 
 ## Output shape
 
 ```
-/tmp/agentprobe-output/
+/tmp/a-test-output/
   basic_smoke_01.png        # one screenshot per CUA step
   basic_smoke_02.png
   ...
@@ -286,7 +286,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: dzianisv/agentprobe/.github/actions/agentprobe-android@main
+      - uses: dzianisv/a-test/.github/actions/a-test-android@main
         with:
           case: examples/android/basic_smoke.py
           api-level: '33'
@@ -311,7 +311,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: dzianisv/agentprobe/.github/actions/agentprobe-browser@main
+      - uses: dzianisv/a-test/.github/actions/a-test-browser@main
         with:
           case: examples/open-weather.yaml
           output-dir: /tmp/cua-output
@@ -334,7 +334,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/agentprobe-desktop
+      - uses: ./.github/actions/a-test-desktop
         with:
           case: examples/dual-surface/chrome-sync-login.ts
           output-dir: /tmp/cua-output
@@ -368,7 +368,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install agentprobe
+      - run: pip install a-test
       - run: sudo apt-get install -y ffmpeg
       - name: Enable KVM
         run: |
@@ -381,7 +381,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
-          script: agentprobe run --target android --case examples/android/basic_smoke.py --output-dir /tmp/cua-output
+          script: a-test run --target android --case examples/android/basic_smoke.py --output-dir /tmp/cua-output
         env:
           AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
           AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
@@ -423,7 +423,7 @@ jobs:
           AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
           CUA_MODEL: gpt-5.4
           DISPLAY: ':99'
-        run: agentprobe run --target browser --case examples/open-weather.yaml --output-dir /tmp/cua-output
+        run: a-test run --target browser --case examples/open-weather.yaml --output-dir /tmp/cua-output
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -446,7 +446,7 @@ See [docs/writing-cases.md](docs/writing-cases.md) and [skills/write-cua-test/SK
 
 ## CI integration docs
 
-See [docs/ci.md](docs/ci.md) and [skills/agentprobe-ci/SKILL.md](skills/agentprobe-ci/SKILL.md).
+See [docs/ci.md](docs/ci.md) and [skills/a-test-ci/SKILL.md](skills/a-test-ci/SKILL.md).
 
 
 # Models

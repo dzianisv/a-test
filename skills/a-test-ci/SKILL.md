@@ -1,9 +1,9 @@
 ---
-name: agentprobe-ci
-description: Wire agentprobe into GitHub Actions CI. Use when asked to add CUA tests to a CI pipeline for an Android app or browser extension.
+name: a-test-ci
+description: Wire a-test into GitHub Actions CI. Use when asked to add CUA tests to a CI pipeline for an Android app or browser extension.
 ---
 
-# agentprobe in GitHub Actions CI
+# a-test in GitHub Actions CI
 
 ## Android: android-emulator-runner
 
@@ -20,14 +20,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install agentprobe
+      - run: pip install a-test
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 28
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: agentprobe run --target android --case examples/android/basic_smoke.py --output-dir /tmp/cua-output
+          script: a-test run --target android --case examples/android/basic_smoke.py --output-dir /tmp/cua-output
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       - uses: actions/upload-artifact@v4
@@ -48,14 +48,14 @@ jobs:
   cua:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/dzianisv/agentprobe:latest
+      image: ghcr.io/dzianisv/a-test:latest
     steps:
       - uses: actions/checkout@v4
       - name: Build extension
         run: npm ci && npm run build
       - name: Run CUA test
         run: |
-          agentprobe run --target browser \
+          a-test run --target browser \
             --case browser/cases/google-oauth.ts \
             --extension dist/prod-unpacked \
             --output-dir /tmp/cua-output
@@ -74,7 +74,7 @@ jobs:
 ```python
 # tests/test_my_feature.py
 import pytest
-from agentprobe import TestCase
+from a_test import TestCase
 
 def test_onboarding(cua_case):
     case = TestCase(

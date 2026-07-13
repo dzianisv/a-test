@@ -1,4 +1,4 @@
-"""CLI entry point for agentprobe."""
+"""CLI entry point for a-test."""
 import argparse
 import json
 import os
@@ -14,12 +14,12 @@ def _find_browser_runner():
     The browser backend is a Bun/TypeScript directory, not a Python module, so
     it is not shipped inside the installed Python package. It runs from a repo
     checkout. We look, in order:
-      1. AGENTPROBE_BROWSER_DIR env var (explicit override)
+      1. A_TEST_BROWSER_DIR env var (explicit override)
       2. <package>/../browser/runner.ts   (editable install / repo checkout)
       3. ./browser/runner.ts              (cwd is the repo root)
     Returns a Path or None.
     """
-    env_dir = os.environ.get("AGENTPROBE_BROWSER_DIR")
+    env_dir = os.environ.get("A_TEST_BROWSER_DIR")
     candidates = []
     if env_dir:
         candidates.append(Path(env_dir) / "runner.ts")
@@ -39,8 +39,8 @@ def _run_browser(args):
             "ERROR: browser backend not found.\n"
             "The browser target runs from a repo checkout (it is a Bun/TypeScript\n"
             "runner, not part of the installed Python package). Either:\n"
-            "  - run agentprobe from a clone of https://github.com/dzianisv/agentprobe, or\n"
-            "  - set AGENTPROBE_BROWSER_DIR to the directory containing runner.ts.\n"
+            "  - run a-test from a clone of https://github.com/dzianisv/a-test, or\n"
+            "  - set A_TEST_BROWSER_DIR to the directory containing runner.ts.\n"
             "See docs/quickstart.md for details.",
             file=sys.stderr,
         )
@@ -116,7 +116,7 @@ def _load_case(case_path, max_steps_override):
         try:
             import yaml
         except ImportError:
-            print("ERROR: pyyaml required for YAML cases: pip install agentprobe[yaml]",
+            print("ERROR: pyyaml required for YAML cases: pip install a-test[yaml]",
                   file=sys.stderr)
             sys.exit(2)
         with open(case_path) as f:
@@ -133,7 +133,7 @@ def _build_android_grounding_fn():
     touchscreens (adjacent buttons are often <100px apart), causing flaky
     mis-taps. Holo is a dedicated grounding/localization model that resolves
     a short element description (e.g. "the digit 7 button") to real pixel
-    coordinates from the current screenshot -- see agentprobe/grounding.py.
+    coordinates from the current screenshot -- see a_test/grounding.py.
     Returns None (blind mode, unchanged behavior) when HAI_API_KEY isn't
     configured, so this is a no-op for environments without the key.
     """
@@ -157,7 +157,7 @@ def _run_android(args):
         sys.exit(2)
 
     model = args.model or os.environ.get("CUA_MODEL", "gpt-4o")
-    output_dir = args.output_dir or "/tmp/agentprobe-output"
+    output_dir = args.output_dir or "/tmp/a-test-output"
     grounding_fn = _build_android_grounding_fn()
 
     result = run_case(
@@ -179,7 +179,7 @@ def _run_android(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="agentprobe",
+        prog="a-test",
         description="Test Android apps and browser extensions with a computer-use agent",
     )
     subparsers = parser.add_subparsers(dest="command")
@@ -192,7 +192,7 @@ def main():
     run_parser.add_argument("--model", default=None,
                             help="LLM model name (default: gpt-4o)")
     run_parser.add_argument("--output-dir", default=None,
-                            help="Directory for screenshots, demo.gif, result.json (default: /tmp/agentprobe-output)")
+                            help="Directory for screenshots, demo.gif, result.json (default: /tmp/a-test-output)")
     run_parser.add_argument("--url", default=None,
                             help="Starting URL for browser (browser target only)")
     run_parser.add_argument("--max-steps", type=int, default=None,

@@ -1,4 +1,4 @@
-"""Action dispatch for agentprobe Android harness."""
+"""Action dispatch for a-test Android harness."""
 import subprocess
 import time
 

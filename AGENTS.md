@@ -1,8 +1,8 @@
-# agentprobe — Agent Instructions
+# a-test — Agent Instructions
 
 ## Project Overview
 
-`agentprobe` is a test harness for computer-use agents testing Android apps and web apps. See [PRD.md](PRD.md) and [TDD.md](TDD.md) for scope.
+`a-test` is a test harness for computer-use agents testing Android apps and web apps. See [PRD.md](PRD.md) and [TDD.md](TDD.md) for scope.
 
 ## Release Gate: Project Readiness
 
@@ -52,10 +52,10 @@ Each CUA job produces:
 
 ## CI Integration Helper Actions
 
-Use `.github/actions/agentprobe-android@main` or `.github/actions/agentprobe-browser@main` in other repos:
+Use `.github/actions/a-test-android@main` or `.github/actions/a-test-browser@main` in other repos:
 
 ```yaml
-- uses: dzianisv/agentprobe/.github/actions/agentprobe-android@main
+- uses: dzianisv/a-test/.github/actions/a-test-android@main
   with:
     case: examples/android/my-test.yaml
     output-dir: /tmp/out

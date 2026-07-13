@@ -38,12 +38,12 @@ jobs:
           profile: pixel_4
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
-          script: agentprobe run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
+          script: a-test run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
         env:
           AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
           AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
           AZURE_CUA_MODEL: gpt-5.4
-          # Enables Holo grounding (agentprobe/grounding.py) so tap targets are
+          # Enables Holo grounding (a_test/grounding.py) so tap targets are
           # resolved from the live screenshot instead of the planner LLM
           # guessing raw pixel coordinates -- fixes flaky adjacent-button
           # mis-taps (e.g. tapping "3" instead of "2"). No-op if unset.

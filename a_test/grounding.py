@@ -6,7 +6,7 @@ Submit button"), it returns that element's location. It does not decide
 *what* to do next -- a separate planner LLM (any OpenAI-compatible chat
 model, configured independently) makes that decision. This module is the
 "turn a description into real pixel coordinates" half of that two-tier
-design; agentprobe.loop wires it in as an optional `grounding_fn` used only
+design; a_test.loop wires it in as an optional `grounding_fn` used only
 for `tap` actions (see run_cua_step / SYSTEM_PROMPT_HOLO_APPENDIX).
 
 Coordinate contract -- read this twice:
@@ -135,7 +135,7 @@ def ground(
 def make_grounding_fn(model: str = None, base_url: str = None, api_key: str = None, api_key_env: str = None):
     """Build a grounding_fn(image_b64, description, w, h) -> (x, y) closure.
 
-    Wired into agentprobe.loop.run_cua_step's `grounding_fn` parameter.
+    Wired into a_test.loop.run_cua_step's `grounding_fn` parameter.
     Fails loudly (ValueError) with a clear message if the Holo API key isn't
     configured -- callers should let this propagate rather than silently
     skipping grounding, per the "fail clear, don't fail silent" contract for

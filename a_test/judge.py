@@ -1,4 +1,4 @@
-"""Pass/fail judgement for agentprobe.
+"""Pass/fail judgement for a-test.
 
 After the CUA loop ends (done or maxSteps), the loop reports only what the
 agent *thinks* it did. That is not a verdict — the agent can emit `done` while

@@ -1,4 +1,4 @@
-"""Tests for agentprobe judge logic."""
+"""Tests for a-test judge logic."""
 import sys
 import os
 
@@ -6,8 +6,8 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agentprobe.case import TestCase, Verification
-from agentprobe.judge import judge_result
+from a_test.case import TestCase, Verification
+from a_test.judge import judge_result
 
 
 class FakeClient:

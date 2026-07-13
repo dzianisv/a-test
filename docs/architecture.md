@@ -2,15 +2,15 @@
 
 ## Overview
 
-agentprobe is a polyglot test harness: Android tests run a Python CUA loop over ADB;
+a-test is a polyglot test harness: Android tests run a Python CUA loop over ADB;
 browser tests run a TypeScript/Bun CUA loop over CDP and xdotool. Both share the same
 `TestCase` schema.
 
 ## Android: Python + ADB
 
 ```
-agentprobe run --target android
-  -> agentprobe/loop.py:run_case()
+a-test run --target android
+  -> a_test/loop.py:run_case()
       -> run_cua_step(success_criteria, failure_criteria)  # drive the device
           -> screenshot via adb exec-out screencap
           -> LLM call (openai-compatible API)
@@ -19,13 +19,13 @@ agentprobe run --target android
                   "SUCCESS when: <successCriteria>"   (if set)
                   "FAIL immediately if: <failureCriteria>"  (if set)
           -> parse JSON action
-          -> agentprobe/actions.py:execute_action()
+          -> a_test/actions.py:execute_action()
               -> adb shell input tap/type/swipe/...
           -> repeat until done/fail/max_steps
-      -> agentprobe/judge.py:judge_result()     # verdict from final screenshot
+      -> a_test/judge.py:judge_result()     # verdict from final screenshot
           -> ask vision model the verification.prompt or successCriteria (YES/NO)
           -> verifier failure → verdict=fail (never silent pass)
-      -> agentprobe/recording.py:assemble_gif() # demo.gif from step-*.png
+      -> a_test/recording.py:assemble_gif() # demo.gif from step-*.png
       -> write result.json                      # verdict + reason + steps + gif path
 ```
 
@@ -45,7 +45,7 @@ instead.
 ## Browser: TypeScript + Bun + CDP
 
 ```
-agentprobe run --target browser
+a-test run --target browser
   -> bun browser/runner.ts
       -> startChrome() via google-chrome --remote-debugging-port=9222
       -> seedExtensionStorage() via CDP

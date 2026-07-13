@@ -1,13 +1,13 @@
-# agentprobe — Technical Design Document
+# a-test — Technical Design Document
 
 ## Architecture Overview
 
-agentprobe is a polyglot package: a Python library/CLI wraps two backends.
+a-test is a polyglot package: a Python library/CLI wraps two backends.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Developer interface                                     │
-│  YAML / JSON / Python TestCase  →  agentprobe CLI / API │
+│  YAML / JSON / Python TestCase  →  a-test CLI / API     │
 └──────────────────────┬──────────────────────────────────┘
                        │
            ┌───────────┴────────────┐
@@ -16,7 +16,7 @@ agentprobe is a polyglot package: a Python library/CLI wraps two backends.
            │                        │
   ┌────────▼────────┐      ┌────────▼────────┐
   │  Python backend  │      │   Bun/TS backend │
-  │  agentprobe/     │      │   browser/       │
+  │  a_test/         │      │   browser/       │
   │  loop.py         │      │   runner.ts      │
   └────────┬────────┘      └────────┬────────┘
            │                        │
@@ -34,7 +34,7 @@ agentprobe is a polyglot package: a Python library/CLI wraps two backends.
 
 ## Test Case Schema
 
-Defined in `agentprobe/case.py`. Consumed by both backends.
+Defined in `a_test/case.py`. Consumed by both backends.
 
 ```python
 @dataclass
@@ -61,14 +61,14 @@ Loaded from YAML/JSON/Python via `cli._load_case()`. YAML is canonical for human
 
 ## CLI Flags
 
-`agentprobe run` (`agentprobe/__main__.py` makes `python -m agentprobe` equivalent):
+`a-test run` (`a_test/__main__.py` makes `python -m a_test` equivalent):
 
 | Flag | Default | Description |
 |---|---|---|
 | `--target` | required | `android` or `browser` |
 | `--case` | required | Path to `.py`, `.json`, `.yaml`, or `.yml` test case |
 | `--model` | `gpt-4o` | LLM model (Android only; overridden by xAI/Gemini env keys) |
-| `--output-dir` | `/tmp/agentprobe-output` | Directory for screenshots, GIF, logs |
+| `--output-dir` | `/tmp/a-test-output` | Directory for screenshots, GIF, logs |
 | `--url` | `None` | Starting URL (browser only) |
 | `--max-steps` | `None` | Override `maxSteps` from the test case |
 | `--include-xml` | `False` | Append UI hierarchy XML to each Android CUA step (Android only) |
@@ -78,7 +78,7 @@ Loaded from YAML/JSON/Python via `cli._load_case()`. YAML is canonical for human
 
 ## CUA Loop (Android backend)
 
-`agentprobe/loop.py → run_cua_step()`
+`a_test/loop.py → run_cua_step()`
 
 ```
 while step < maxSteps:
@@ -98,7 +98,7 @@ while step < maxSteps:
 
 Note: `click`, `double_click`, `scroll`, and `drag` are not implemented in `actions.py`. The system prompt asks the model for `tap` (not `click`) and `swipe` (not `drag`).
 
-**System prompt** (`agentprobe/prompts.py`): instructs the model to emit one JSON action per turn and use `tap` for all taps, `swipe` for scrolling/dragging, `key` for hardware keys, and `done`/`fail` for terminal states. The system prompt is generic — instructs the model to emit one JSON action per turn, use `tap`/`swipe`/`key`/`done`/`fail`, and avoid app-specific assumptions.
+**System prompt** (`a_test/prompts.py`): instructs the model to emit one JSON action per turn and use `tap` for all taps, `swipe` for scrolling/dragging, `key` for hardware keys, and `done`/`fail` for terminal states. The system prompt is generic — instructs the model to emit one JSON action per turn, use `tap`/`swipe`/`key`/`done`/`fail`, and avoid app-specific assumptions.
 
 ---
 
@@ -127,7 +127,7 @@ Same logical loop as Android, different transport:
 
 The two backends use different judge implementations.
 
-### Android — `agentprobe/judge.py → judge_result()`
+### Android — `a_test/judge.py → judge_result()`
 
 Runs after the CUA loop regardless of its outcome (success, failure, or timeout). Uses `chat.completions`.
 
@@ -171,7 +171,7 @@ writes: verification.json to outputDir
 
 ## Model Configuration
 
-### Android backend (`agentprobe/client.py → make_client()`)
+### Android backend (`a_test/client.py → make_client()`)
 
 Checked in priority order. First matching key wins.
 
@@ -202,7 +202,7 @@ Uses its own client setup (not Python's `make_client()`).
 
 ## Output Artifacts
 
-Written to `--output-dir` (default: `/tmp/agentprobe-output/`).
+Written to `--output-dir` (default: `/tmp/a-test-output/`).
 
 ### Android backend
 
@@ -232,27 +232,27 @@ Written to `--output-dir` (default: `/tmp/agentprobe-output/`).
 ### pip (Python — Android + browser)
 
 ```bash
-pip install agentprobe
+pip install a-test
 ```
 
 `pyyaml` is included in core dependencies — no extra is needed for YAML test cases. The `[yaml]` extra exists for historical reasons and is a no-op.
 
 Requires Python ≥ 3.10. Android target additionally requires `adb` in PATH. Browser target requires `bun`, `xdotool`, `scrot`, and `google-chrome` in PATH.
 
-`python -m agentprobe` is supported via `agentprobe/__main__.py`.
+`python -m a_test` is supported via `a_test/__main__.py`.
 
 ### Bun (browser-only, zero Python)
 
 The browser runner is a Bun/TypeScript script in `browser/`. It is **not published to npm** (`package.json` is `"private": true`). Run it from a repo checkout:
 
 ```bash
-git clone https://github.com/dzianisv/agentprobe
-cd agentprobe
+git clone https://github.com/dzianisv/a-test
+cd a-test
 bun install          # installs js-yaml, openai, sharp
 bun browser/runner.ts --test-case examples/open-weather.yaml --output-dir /tmp/out
 ```
 
-Set `AGENTPROBE_BROWSER_DIR` to override the runner location when calling the Python CLI from outside the repo.
+Set `A_TEST_BROWSER_DIR` to override the runner location when calling the Python CLI from outside the repo.
 
 ---
 
@@ -262,13 +262,13 @@ Registered automatically at install via `pyproject.toml`:
 
 ```toml
 [project.entry-points."pytest11"]
-agentprobe = "agentprobe.pytest_plugin"
+a_test = "a_test.pytest_plugin"
 ```
 
 The plugin exposes a `cua_case` fixture. The fixture takes a `TestCase` object (not a YAML file path) and calls `run_case()`. Use it as:
 
 ```python
-from agentprobe import TestCase
+from a_test import TestCase
 
 def test_android_settings(cua_case):
     case = TestCase(
@@ -287,8 +287,8 @@ Verdict failures raise `pytest.fail()` with the reason string (via the assertion
 ## Directory Layout
 
 ```
-agentprobe/           Python package
-  __main__.py         Enables python -m agentprobe
+a_test/               Python package
+  __main__.py         Enables python -m a_test
   cli.py              Entry point, arg parsing, target dispatch
   loop.py             Android CUA loop (run_cua_step, run_case)
   actions.py          adb action executor
@@ -350,7 +350,7 @@ README.md             Quickstart
 
 ## Pilot Test Cases
 
-Three real-world products are tested via agentprobe in CI. Each maps to a workflow in `.github/workflows/`.
+Three real-world products are tested via a-test in CI. Each maps to a workflow in `.github/workflows/`.
 
 | Workflow | Test case | Target | Install method |
 |---|---|---|---|

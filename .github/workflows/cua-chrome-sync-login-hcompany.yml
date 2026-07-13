@@ -7,7 +7,7 @@ name: CUA Chrome-Sync Login (H Company Holo)
 # be configured on every fork, and exercises H Company's hosted free tier.
 #
 # Delegates the install/Xvfb/run steps to the reusable
-# .github/actions/agentprobe-desktop composite action (same action used by
+# .github/actions/a-test-desktop composite action (same action used by
 # cua-chrome-sync-login.yml and cua-dual-surface.yml) instead of duplicating
 # them inline — only the HAI_API_KEY verification step and env wiring are
 # specific to this workflow.
@@ -34,7 +34,7 @@ jobs:
           fi
 
       - name: Run chrome-sync login (terminal + browser) example against H Company Holo
-        uses: ./.github/actions/agentprobe-desktop
+        uses: ./.github/actions/a-test-desktop
         with:
           case: examples/dual-surface/chrome-sync-login.ts
           output-dir: /tmp/chrome-sync-login-hcompany-output

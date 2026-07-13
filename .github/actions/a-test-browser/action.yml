@@ -1,5 +1,5 @@
-name: 'agentprobe Browser CUA'
-description: 'Run agentprobe CUA tests in headless Chrome. Secrets (AZURE_CUA_API_KEY, AZURE_CUA_BASE_URL) must be set in the calling job env.'
+name: 'a-test Browser CUA'
+description: 'Run a-test CUA tests in headless Chrome. Secrets (AZURE_CUA_API_KEY, AZURE_CUA_BASE_URL) must be set in the calling job env.'
 
 inputs:
   case:
@@ -7,7 +7,7 @@ inputs:
     required: true
   output-dir:
     description: 'Directory for screenshots, demo.gif, result.json'
-    default: '/tmp/agentprobe-output'
+    default: '/tmp/a-test-output'
   url:
     description: 'Starting URL (overrides the url field in the test case)'
     default: ''
@@ -18,15 +18,15 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install agentprobe
+    - name: Install a-test
       shell: bash
-      run: pip install agentprobe
+      run: pip install a-test
 
-    - name: Checkout agentprobe browser runner
+    - name: Checkout a-test browser runner
       uses: actions/checkout@v4
       with:
-        repository: dzianisv/agentprobe
-        path: _agentprobe
+        repository: dzianisv/a-test
+        path: _a-test
         sparse-checkout: browser
 
     - name: Install bun
@@ -36,7 +36,7 @@ runs:
 
     - name: Install browser runner deps
       shell: bash
-      run: cd _agentprobe/browser && bun install
+      run: cd _a-test/browser && bun install
 
     - name: Install system deps
       shell: bash
@@ -54,7 +54,7 @@ runs:
     - name: Run CUA test in Chrome
       shell: bash
       env:
-        AGENTPROBE_BROWSER_DIR: ${{ github.action_path }}/../../_agentprobe/browser
+        A_TEST_BROWSER_DIR: ${{ github.action_path }}/../../_a-test/browser
         CUA_MODEL: ${{ inputs.model }}
         DISPLAY: ':99'
       run: |
@@ -62,7 +62,7 @@ runs:
         if [ -n "${{ inputs.url }}" ]; then
           URL_ARG="--url ${{ inputs.url }}"
         fi
-        agentprobe run \
+        a-test run \
           --target browser \
           --case ${{ inputs.case }} \
           --output-dir ${{ inputs.output-dir }} \

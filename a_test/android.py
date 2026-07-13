@@ -1,4 +1,4 @@
-"""ADB primitives for agentprobe Android harness. No agentprobe imports."""
+"""ADB primitives for a-test Android harness. No a-test imports."""
 import base64
 import os
 import re

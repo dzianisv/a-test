@@ -234,11 +234,11 @@ def render_html(ranked_aggregates: list, runs: list) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>agentprobe bench leaderboard</title>
+<title>a-test bench leaderboard</title>
 <style>{_HTML_STYLE}</style>
 </head>
 <body>
-<h1>agentprobe bench leaderboard</h1>
+<h1>a-test bench leaderboard</h1>
 <p class="subtitle">Multi-backend CUA benchmark results, ranked by pass rate then cost.</p>
 <table>
 <tr><th>Backend</th><th>Pass Rate</th><th>Avg Steps</th><th>Avg Latency (s)</th><th>$/Run</th></tr>

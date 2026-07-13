@@ -1,12 +1,12 @@
 """
-Example: run a browser CUA test via the agentprobe CLI.
+Example: run a browser CUA test via the a-test CLI.
 
 Usage:
-    agentprobe run \\
+    a-test run \\
         --target browser \\
         --case browser/cases/google-oauth.ts \\
         --extension /path/to/ext/dist/prod-unpacked \\
-        --output-dir /tmp/agentprobe-output
+        --output-dir /tmp/a-test-output
 
 Or invoke programmatically (shells out to bun):
     python examples/browser/install_auth.py /path/to/ext
@@ -15,9 +15,9 @@ import subprocess
 import sys
 
 
-def run_browser_case(extension_path: str, output_dir: str = "/tmp/agentprobe-output"):
+def run_browser_case(extension_path: str, output_dir: str = "/tmp/a-test-output"):
     cmd = [
-        "agentprobe", "run",
+        "a-test", "run",
         "--target", "browser",
         "--case", "browser/cases/google-oauth.ts",
         "--extension", extension_path,

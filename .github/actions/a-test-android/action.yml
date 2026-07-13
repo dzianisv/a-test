@@ -1,5 +1,5 @@
-name: 'agentprobe Android CUA'
-description: 'Run agentprobe CUA tests on an Android emulator. Secrets (AZURE_CUA_API_KEY, AZURE_CUA_BASE_URL) must be set in the calling job env.'
+name: 'a-test Android CUA'
+description: 'Run a-test CUA tests on an Android emulator. Secrets (AZURE_CUA_API_KEY, AZURE_CUA_BASE_URL) must be set in the calling job env.'
 
 inputs:
   case:
@@ -13,7 +13,7 @@ inputs:
     default: ''
   output-dir:
     description: 'Directory for screenshots, demo.gif, result.json'
-    default: '/tmp/agentprobe-output'
+    default: '/tmp/a-test-output'
   model:
     description: 'Azure OpenAI model deployment name'
     default: 'gpt-5.4'
@@ -21,9 +21,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install agentprobe
+    - name: Install a-test
       shell: bash
-      run: pip install agentprobe
+      run: pip install a-test
 
     - name: Install ffmpeg
       shell: bash
@@ -49,4 +49,4 @@ runs:
           if [ -n "${{ inputs.apk-path }}" ]; then
             adb install -r "${{ inputs.apk-path }}"
           fi
-          agentprobe run --target android --case ${{ inputs.case }} --output-dir ${{ inputs.output-dir }}
+          a-test run --target android --case ${{ inputs.case }} --output-dir ${{ inputs.output-dir }}

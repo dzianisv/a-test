@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=68", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "agentprobe"
-version = "0.1.0"
+name = "a-test"
+dynamic = ["version"]
 description = "Test Android apps and browser extensions with a computer-use agent"
 readme = "README.md"
 license = {text = "MIT"}
@@ -20,14 +20,14 @@ yaml = ["pyyaml>=6.0"]
 gif-captions = ["Pillow>=10.0"]
 
 [project.scripts]
-agentprobe = "agentprobe.cli:main"
+a-test = "a_test.cli:main"
 
 [project.entry-points."pytest11"]
-agentprobe = "agentprobe.pytest_plugin"
+a_test = "a_test.pytest_plugin"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["agentprobe*"]
+include = ["a_test*"]
 
-[tool.setuptools.package-data]
-agentprobe = ["../browser/**/*", "../browser/*"]
+[tool.setuptools_scm]
+fallback_version = "0.0.0"

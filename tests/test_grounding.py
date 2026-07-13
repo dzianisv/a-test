@@ -1,4 +1,4 @@
-"""Unit tests for agentprobe.grounding -- the Holo coordinate scaling contract.
+"""Unit tests for a_test.grounding -- the Holo coordinate scaling contract.
 
 Holo's grounding API returns {"x", "y"} normalized to [0, 1000] on each axis.
 Getting the scale-to-pixels conversion wrong means every click misses its
@@ -6,7 +6,7 @@ target, so this is tested directly and in isolation from any network call.
 """
 import pytest
 
-from agentprobe.grounding import HoloRateLimiter, scale_holo_coords
+from a_test.grounding import HoloRateLimiter, scale_holo_coords
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +64,7 @@ def test_scale_holo_coords_rejects_non_positive_dimensions():
 
 def test_rate_limiter_first_call_does_not_block(monkeypatch):
     slept = []
-    monkeypatch.setattr("agentprobe.grounding.time.sleep", lambda s: slept.append(s))
+    monkeypatch.setattr("a_test.grounding.time.sleep", lambda s: slept.append(s))
     limiter = HoloRateLimiter(min_interval_s=12.5)
     limiter.wait()
     assert slept == []  # nothing to wait for on the very first call
@@ -72,9 +72,9 @@ def test_rate_limiter_first_call_does_not_block(monkeypatch):
 
 def test_rate_limiter_second_call_waits_remaining_interval(monkeypatch):
     fake_now = [1000.0]
-    monkeypatch.setattr("agentprobe.grounding.time.monotonic", lambda: fake_now[0])
+    monkeypatch.setattr("a_test.grounding.time.monotonic", lambda: fake_now[0])
     slept = []
-    monkeypatch.setattr("agentprobe.grounding.time.sleep", lambda s: slept.append(s))
+    monkeypatch.setattr("a_test.grounding.time.sleep", lambda s: slept.append(s))
 
     limiter = HoloRateLimiter(min_interval_s=12.5)
     limiter.wait()  # t=1000, no sleep
@@ -85,9 +85,9 @@ def test_rate_limiter_second_call_waits_remaining_interval(monkeypatch):
 
 def test_rate_limiter_no_wait_if_interval_already_elapsed(monkeypatch):
     fake_now = [1000.0]
-    monkeypatch.setattr("agentprobe.grounding.time.monotonic", lambda: fake_now[0])
+    monkeypatch.setattr("a_test.grounding.time.monotonic", lambda: fake_now[0])
     slept = []
-    monkeypatch.setattr("agentprobe.grounding.time.sleep", lambda s: slept.append(s))
+    monkeypatch.setattr("a_test.grounding.time.sleep", lambda s: slept.append(s))
 
     limiter = HoloRateLimiter(min_interval_s=12.5)
     limiter.wait()

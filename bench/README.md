@@ -1,6 +1,6 @@
 # bench
 
-A multi-backend CUA benchmark harness built on top of `agentprobe`. It runs
+A multi-backend CUA benchmark harness built on top of `a-test`. It runs
 the same `TestCase`(s) against several OpenAI-compatible model backends and
 produces a ranked leaderboard (pass rate, steps, latency, cost) with visual
 evidence (per-run GIFs) for judges/reviewers to click through.
@@ -9,7 +9,7 @@ evidence (per-run GIFs) for judges/reviewers to click through.
 
 Backends live in `bench/backends.yaml` as a list of `{name, model, base_url,
 api_key_env, cost_per_1m_input, cost_per_1m_output}` entries. Each is routed
-through `agentprobe.client.make_client(backend="generic", api_key_env=...,
+through `a_test.client.make_client(backend="generic", api_key_env=...,
 base_url=...)`, so adding a new OpenAI-compatible endpoint (e.g. a
 locally-served open-weight model) needs zero code changes — just a new YAML
 entry.
@@ -30,7 +30,7 @@ python -m bench.run \
 ```
 
 - `--cases`: comma-separated `.py`/`.json`/`.yaml` case files, loaded via
-  `agentprobe.cli._load_case`.
+  `a_test.cli._load_case`.
 - `--backends`: comma-separated names from `backends.yaml` (default: all).
 - `--repeat`: repeat each (backend, case) pair N times (default 1).
 - `--output-dir`: where results land (default `/tmp/bench`).
@@ -56,7 +56,7 @@ python -m bench.report --input /tmp/bench/results.json --output-dir /tmp/bench
 
 ## Why `cost_usd` / `tokens_in` / `tokens_out` are `None` on real runs today
 
-`agentprobe.loop.run_case` doesn't track token usage yet, so real (non
+`a_test.loop.run_case` doesn't track token usage yet, so real (non
 `--dry-run`) invocations legitimately have no token counts and therefore no
 computed cost. `--dry-run` fabricates plausible token counts so the cost math
 has real numbers to demo. This is expected, not a bug.

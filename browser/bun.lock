@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "agentprobe-browser",
+      "name": "a-test-browser",
       "dependencies": {
         "js-yaml": "latest",
         "openai": "latest",

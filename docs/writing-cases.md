@@ -3,7 +3,7 @@
 ## Schema
 
 ```python
-from agentprobe import TestCase, Verification
+from a_test import TestCase, Verification
 
 case = TestCase(
     name="feature_smoke",           # snake_case, unique per suite
@@ -36,7 +36,7 @@ case = TestCase(
 ### Minimal case
 
 ```python
-from agentprobe import TestCase
+from a_test import TestCase
 
 case = TestCase(
     name="settings_open",
@@ -49,7 +49,7 @@ case = TestCase(
 ### With verification guard
 
 ```python
-from agentprobe import TestCase, Verification
+from a_test import TestCase, Verification
 
 case = TestCase(
     name="login_flow",

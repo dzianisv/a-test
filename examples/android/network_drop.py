@@ -1,6 +1,6 @@
-"""Example: Android network drop resilience test using agentprobe."""
-from agentprobe import TestCase, run_case
-from agentprobe.android import simulate_network_drop, restore_network
+"""Example: Android network drop resilience test using a-test."""
+from a_test import TestCase, run_case
+from a_test.android import simulate_network_drop, restore_network
 
 case = TestCase(
     name="network_drop",
@@ -27,6 +27,6 @@ if __name__ == "__main__":
     t = threading.Thread(target=drop_and_restore, daemon=True)
     t.start()
 
-    result = run_case(case, output_dir="/tmp/agentprobe-output")
+    result = run_case(case, output_dir="/tmp/a-test-output")
     t.join()
     print(f"Verdict: {result['verdict']} -- {result.get('reason', '')}")
