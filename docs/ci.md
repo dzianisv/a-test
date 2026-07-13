@@ -310,6 +310,12 @@ pytest tests/
 
 No `conftest.py` needed — the fixture is auto-loaded.
 
+Note: the `tests/` above is *your own* app-under-test's test directory using
+the `cua_case` fixture — a separate concept from this repo's own internal
+unit-test suite (this repo's `tests/`, run via a dedicated `test` job in
+[`lint.yml`](../.github/workflows/lint.yml)), which just validates a-test's
+own source code and has no `cua_case` fixture involved.
+
 ## Publishing to PyPI
 
 The [Publish to PyPI workflow](../.github/workflows/publish-pypi.yml) builds,
