@@ -35,3 +35,14 @@ jobs:
           python -m venv /home/runner/work/_temp/a-test-wheel-venv
           /home/runner/work/_temp/a-test-wheel-venv/bin/python -m pip install dist/*.whl
           /home/runner/work/_temp/a-test-wheel-venv/bin/a-test --help
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -e '.[gif-captions]' pytest
+      - run: python -m pytest tests/ -q
