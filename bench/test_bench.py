@@ -75,7 +75,7 @@ def test_write_results_atomic_round_trip(tmp_path):
     data = {
         "generated_at": "2026-07-12T00:00:00+00:00",
         "runs": [
-            {"backend": "gemini-flash", "case": "basic_smoke", "repeat_index": 0,
+            {"backend": "gemini-flash", "case": "sample_case", "repeat_index": 0,
              "verdict": "pass", "steps": 5, "wall_clock_s": 0.12,
              "tokens_in": 900, "tokens_out": 80, "cost_usd": 0.000122,
              "gif": None, "reason": "ok", "error": None,

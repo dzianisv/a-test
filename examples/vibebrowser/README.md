@@ -2,11 +2,11 @@
 
 a-test test cases for the [Vibe Chrome extension](https://github.com/dzianisv/vibebrowser/vibe).
 
-| Case | Speed | Trigger | What it tests |
+| Case | Speed | CI status | What it tests |
 |---|---|---|---|
-| `vibe-install-smoke.yaml` | ~1 min | per-PR | CWS listing page loads with install button |
-| `vibe-settings-provider.yaml` | ~1 min | per-PR | Settings page loads with provider selector |
-| `vibe-sidepanel-smoke.yaml` | ~2 min | per-PR | Side panel opens without errors |
+| `vibe-install-smoke.yaml` | ~1 min | Per-PR — [`cua-chrome-extension.yml`](../../.github/workflows/cua-chrome-extension.yml) | CWS listing page loads with install button |
+| `vibe-settings-provider.yaml` | ~1 min | Manual only — requires a pre-loaded Vibe extension profile | Settings page loads with provider selector |
+| `vibe-sidepanel-smoke.yaml` | ~2 min | Manual only — requires a pre-loaded Vibe extension profile | Side panel opens without errors |
 
 ## Running locally
 

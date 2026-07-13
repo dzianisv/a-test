@@ -37,7 +37,7 @@ case = TestCase(
 
 ```bash
 # Android (adb device required)
-a-test run --target android --case examples/android/basic_smoke.py
+a-test run --target android --case examples/android/calculator_math.py
 
 # Browser (bun + extension path required)
 a-test run --target browser --case browser/cases/google-oauth.ts \

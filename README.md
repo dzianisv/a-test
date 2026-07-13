@@ -214,7 +214,7 @@ export AZURE_CUA_MODEL=gpt-5.4
 
 a-test run \
   --target android \
-  --case examples/android/basic_smoke.py \
+  --case examples/android/calculator_math.py \
   --output-dir /tmp/a-test-output
 
 open /tmp/a-test-output/demo.gif
@@ -247,17 +247,17 @@ agent installs it through the browser UI, just like a user would.
 from a_test import TestCase, run_case
 
 case = TestCase(
-    name="basic_smoke",
+    name="calculator_math",
     package="com.android.calculator2",   # launches the app before CUA runs
-    instruction="Verify the Calculator keypad is visible, then compute 5 + 3 = and confirm the result is 8.",
-    successCriteria=["Calculator is open with a numeric keypad", "Result 8 is displayed"],
+    instruction="Compute 27 + 18 using the keypad, then verify the result 45 is displayed.",
+    successCriteria=["Calculator is open with a numeric keypad", "Result 45 is displayed"],
     failureCriteria=["App crashes or shows error dialog"],
-    maxSteps=15,
+    maxSteps=25,
 )
 
 result = run_case(case, output_dir="/tmp/a-test-output")
 print(result["verdict"], "--", result["reason"])
-# pass -- YES. The calculator shows 8 after tapping 5 + 3 =.
+# pass -- YES. The calculator shows 45 after computing 27 + 18.
 ```
 
 `run_case` brings the app to foreground, drives the device via the CUA loop, judges
@@ -284,10 +284,10 @@ This makes demos much more educational — viewers see the agent's reasoning in 
 
 ```
 /tmp/a-test-output/
-  basic_smoke_01.png        # one screenshot per CUA step
-  basic_smoke_02.png
+  calculator_math_01.png     # one screenshot per CUA step
+  calculator_math_02.png
   ...
-  basic_smoke.mp4           # screen recording (Android)
+  calculator_math.mp4        # screen recording (Android)
   demo.gif                  # assembled from all step screenshots
   result.json               # {"verdict": "pass", "reason": "...", "steps": 7}
 ```
@@ -308,7 +308,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dzianisv/a-test/.github/actions/a-test-android@<pinned-commit-sha>  # pin to a commit SHA, not a branch — see docs/VERSIONING.md
         with:
-          case: examples/android/basic_smoke.py
+          case: examples/android/calculator_math.py
           api-level: '33'
           apk-path: path/to/app.apk   # optional: install APK before test
           output-dir: /tmp/cua-output
@@ -401,7 +401,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
-          script: a-test run --target android --case examples/android/basic_smoke.py --output-dir /tmp/cua-output
+          script: a-test run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
         env:
           AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
           AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
