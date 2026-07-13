@@ -1,6 +1,9 @@
 name: Android CUA
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   cua:
     runs-on: ubuntu-latest

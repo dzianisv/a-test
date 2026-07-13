@@ -17,6 +17,9 @@ on:
   schedule:
     - cron: '0 9 * * *' # daily smoke test of the H Company Holo backend
 
+permissions:
+  contents: read
+
 jobs:
   cua-chrome-sync-login-hcompany:
     runs-on: ubuntu-latest

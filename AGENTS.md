@@ -22,11 +22,18 @@ Before shipping, verify all items in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md
 
 ## CI / Quality
 
-All 4 workflows must pass before merge:
-1. **Lint** — code style
+`.github/workflows/` has 10 workflow files. 9 are CI gates that run on every push/PR and must
+pass before merge; the 10th, `publish-pypi.yml`, only runs on `v*` tag pushes to build and publish
+a release, so it isn't part of the merge gate:
+1. **Lint** — code style (`pyflakes`) plus a packaging smoke test (build the wheel with `python -m build`, `twine check`, install into a fresh venv, run `a-test --help`)
 2. **Browser CUA** — open-weather.yaml (real-world web test)
 3. **Android CUA** — calculator_math.py (real-world mobile test)
-4. **CUA Chrome Extension** — vibe-install-smoke.yaml (CWS accessibility)
+4. **CUA - Android App (opencode)** — Android CUA scenario using opencode
+5. **CUA - Chrome Extension (Vibe AI)** — vibe-install-smoke.yaml (CWS accessibility)
+6. **CUA Chrome-Sync Login (Terminal + Browser)** — dual-surface chrome-sync login flow
+7. **CUA Chrome-Sync Login (H Company Holo)** — chrome-sync login flow via H Company Holo
+8. **CUA Dual Surface (Terminal + Browser)** — combined terminal + browser CUA scenario
+9. **CUA - Chrome Web App (vibebrowser.app)** — vibebrowser.app web app smoke test
 
 Each CUA job produces:
 - Screenshots (step-00.png, step-01-a1.png, ...)
@@ -52,7 +59,8 @@ Each CUA job produces:
 
 ## CI Integration Helper Actions
 
-Use `.github/actions/a-test-android@main` or `.github/actions/a-test-browser@main` in other repos:
+Use `dzianisv/a-test/.github/actions/a-test-android@main` or
+`dzianisv/a-test/.github/actions/a-test-browser@main` in other repos:
 
 ```yaml
 - uses: dzianisv/a-test/.github/actions/a-test-android@main

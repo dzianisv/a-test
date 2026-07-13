@@ -1,116 +1,83 @@
-# Agent Guidance for CUA Tests in `tests/cua/`
+# Agent Guidance for `browser/`
 
-This file is loaded by AI coding assistants (Claude Code, Cursor, etc.) when
-they work in this directory. It defines the QA contract for the CUA tests.
-Read this BEFORE modifying anything under `tests/cua/`.
+This file is loaded by AI coding assistants working in this directory.
+Read it before modifying `runner.ts`, `Dockerfile`, or `setup-chrome-profile.sh`.
 
-## Role boundaries — must not be conflated
+## What this directory actually is
 
-The cws-copilot test has **three** distinct actors. Confusing their roles is
-the most common failure mode when iterating on this test:
+`browser/` holds a Bun/TypeScript CUA (computer-use-agent) runner,
+`runner.ts`, that drives a real Chrome browser via CDP while a vision/LLM
+model decides what to click, type, or wait for. `cases/` is currently
+**empty** — it's a placeholder for future browser-specific case files. Real,
+working test cases live under `../examples/` (relative to `browser/`) as
+`.yaml`, `.ts`, or `.py` files (e.g. `examples/open-weather.yaml`,
+`examples/install-extension.yaml`, `examples/vibebrowser/*.yaml`,
+`examples/dual-surface/*.ts`, `examples/browser/install_auth.py`).
 
-| Actor | Responsibility |
-|-------|---------------|
-| **The runner** (`tests/cua/runner.ts`) | Starts Chrome, sets up CDP, runs the CUA loop, auto-fills the Vibe portal sign-in form via CDP, takes screenshots, evaluates verification |
-| **The CUA agent** (Azure GPT-5.4 with computer_use_preview tool) | Operates the sidepanel UI as a real user would: click extension icon, click sign-in, type the prompt in the chat input, wait for the response |
-| **The Vibe Co-Pilot** (the extension's own AI agent, running inside the sidepanel) | Receives the user's prompt and does the real work — opens tabs, navigates to URLs (e.g. duckduckgo.com), searches, scrapes, summarizes, writes the answer back into the sidepanel chat |
+There is no `tests/cua/` directory in this repo, no Vibe browser
+extension/sidepanel/Co-Pilot feature under test here, and no
+`--extension-path` / `--channel` flags on `runner.ts`. If you find guidance
+referencing any of those, it does not apply to this repo — do not act on it.
 
-**The feature under test is the Co-Pilot.** The CUA is just simulating a
-human operator of the sidepanel. The runner is just plumbing.
+## Real CLI surface (verify against `runner.ts`'s `printHelp()` before trusting this)
 
-Do NOT:
-- Make the CUA navigate to web pages itself (that's the Co-Pilot's job).
-- Pre-load DuckDuckGo or any other site as Chrome's initial URL (preempts
-  the Co-Pilot — it has nothing to do).
-- Type credentials yourself from the CUA (the runner auto-fills via CDP).
-- Treat the Vibe extension Home page (chrome-extension://...home.html) or
-  Settings page as the chat surface — the chat surface is ONLY the sidepanel.
+```
+bun runner.ts --test-case <name|path> --output-dir <dir> [--url <url>] [--max-steps <n>]
+```
 
-## The pass bar for `cws-copilot` is strict
+- `--test-case` (required) — basename or file path, `.ts`/`.yaml`/`.yml`/`.json`.
+- `--output-dir` (required) — directory for screenshots and log outputs.
+- `--url` (optional) — overrides the test case's `url` field.
+- `--max-steps` (optional) — overrides the maximum automation steps.
+- `--help` — prints usage.
 
-A run only counts as TEST_PASSED when **both** of these hold in the final
-screenshot:
+Do not invent additional flags. `browser/package.json`'s `"test"` script
+currently points at a stale, nonexistent path
+(`tests/cua/cases/google-oauth.ts`) — don't use it as a working example;
+use the CLI form above directly with a real case path under `../examples/`.
 
-1. **The Vibe sidepanel is OPEN and visible on the right side of the Chrome
-   window.** A response shown on a tab — including the Vibe Home page tab,
-   Settings tab, DuckDuckGo tab — does NOT satisfy this. The sidepanel is a
-   separate Chrome UI surface that occupies a fixed-width column on the
-   right edge of the window. Width is typically 350-450 px.
+## Anti-hallucination guard — real, and load-bearing
 
-2. **The sidepanel contains an AI-Co-Pilot response describing opencode
-   features, changes, or recent release information** (NOT the user's own
-   prompt echoed back, NOT a "thinking" / loading state, NOT an error
-   message — actual content text the Co-Pilot wrote).
+After the CUA loop itself reports success, `verifyResult()` in `runner.ts`
+(around line 591) runs a second, independent check before the result is
+finalized:
 
-These two conditions are encoded in `cases/cws-copilot.ts`:
-- `successCriteria` lists them in human-readable form
-- `verification.prompt` asks the verifier model both questions explicitly
-- `verifyResult()` in `runner.ts` flips the test to FAIL if the verifier
-  answers NO
+1. It takes a **fresh screenshot** — not the last frame from the loop, since
+   the agent may have emitted a success claim while looking at the wrong
+   page or state.
+2. It calls a vision/judge model with the test case's `verification.prompt`
+   field (test cases may define `verification: { prompt: "..." }`; see
+   `examples/install-extension.yaml` for a real example).
+3. It parses a YES/NO answer. If the answer is NO, or the verification API
+   call itself errors, the result is flipped to FAIL and the verifier's
+   evidence (or error) becomes the failure reason — even though the CUA
+   loop claimed success.
 
-If you change `cws-copilot.ts`, you MUST keep these conditions intact. A
-narrower or looser bar is a regression of the test's anti-hallucination
-guard.
+This logic lives around `runner.ts:591-660` (the `verifyResult()` function)
+and is gated in around `runner.ts:1053-1080`, where `testCase.verification?.prompt`
+is checked and `verification.passed` decides the final pass/fail. If a case
+has no `verification.prompt`, the runner falls back to asking the same
+question using the case's `successCriteria` instead — so most non-trivial
+cases still get a second-opinion check.
 
-## Anti-hallucination guard — do not weaken
-
-`runner.ts:verifyResult()` runs after the CUA loop reports TEST_PASSED. It:
-1. Takes a fresh screenshot (NOT the last loop frame — that may show what
-   the CUA hallucinated).
-2. Calls the vision model with `verification.prompt` from the test case.
-3. Parses the YES/NO answer. NO flips the result to FAIL with the
-   verifier's evidence as the reason. Verification API errors also force
-   FAIL.
-
-The verification call is the second pair of eyes. Without it, the CUA
-loop's TEST_PASSED claim is taken at face value — and historically the
-model hallucinates success on Gmail tabs, blank pages, and the wrong
-sidepanel state. Do not bypass this guard.
-
-## Things the QA test must NOT permit
-
-- TEST_PASSED reported while the sidepanel is closed → must FAIL.
-- TEST_PASSED reported while the Co-Pilot is still thinking / spinning →
-  must FAIL.
-- TEST_PASSED reported with no visible response text in the sidepanel →
-  must FAIL.
-- TEST_PASSED reported because the Co-Pilot opened DuckDuckGo (visible
-  DuckDuckGo tab is not the test outcome — the test outcome is the
-  Co-Pilot's reply IN THE SIDEPANEL).
-- Sign-in failures or auth loops counted as success.
-- Test relying on a pre-authenticated account state (the test must
-  exercise the real sign-in flow, even if the runner auto-fills the portal).
-
-## When the test fails
-
-Read the artifacts in this order:
-1. `runner-log.jsonl` — per-step actions and outputs.
-2. `verification.json` — the verifier's YES/NO and evidence.
-3. `verification-screenshot.png` — what the verifier actually saw.
-4. `step-*.png` — frames at each CUA action, in order.
-
-Diagnose by reasoning about the role boundaries above. If the model
-navigated to a website on its own → the instruction was unclear about
-CUA vs Co-Pilot. If the model typed into the wrong field → improve the
-coordinate hint or restructure the UI flow. If the sidepanel opened
-then closed → check Vibe extension's panel-close events.
-
-## Storage / env you can and can't touch
-
-- `vibe.apiKey.openai`, `vibe.model` in chrome.storage.local — the runner
-  seeds placeholder values to make `isExtensionConfigured()` return true
-  and skip the auto-open settings tab. Don't seed REAL keys here — the
-  test relies on the real sign-in flow to exercise the Vibe Portal auth
-  redirect, not on pre-existing AI configuration.
-- `VIBE_TEST_EMAIL`, `VIBE_TEST_PASSWORD` env vars — the runner CDP-fills
-  the portal form with these. Never log them. Never echo them. They live
-  in repo secrets `TEST_FREE_EMAIL` / `TEST_FREE_PASSWORD`.
-- `ANTHROPIC_API_KEY` — not used by this test; ignore.
+**Do not weaken this guard.** If you touch `verifyResult()` or the gating
+logic around it, preserve: the fresh-screenshot capture, the YES/NO parse
+against `verification.prompt` (or the `successCriteria` fallback), and the
+rule that verification API errors force FAIL rather than silently passing.
 
 ## Where to add new test cases
 
-`tests/cua/cases/<name>.ts`. Each must export `{ name, instruction,
-successCriteria, failureCriteria, maxSteps?, verification? }`. If your
-test reaches a state the CUA might mis-evaluate (which is essentially any
-non-trivial e2e), define `verification.prompt` so the post-loop guard
-runs.
+Real case files belong under `../examples/` (`.yaml`, `.ts`, or `.py`), not
+`browser/cases/` (which is an empty placeholder today). If you add a case
+that reaches a state the CUA loop might mis-evaluate — which is essentially
+any non-trivial end-to-end flow — give it a `verification.prompt` so the
+post-loop guard described above actually runs against it.
+
+## Debugging artifacts
+
+The runner writes to `--output-dir`. Inspect these when a case fails:
+- `runner-log.jsonl` — per-step model output, actions, and results.
+- `verification.json` — the verifier's pass/fail, evidence, or error (only
+  present when a verification step ran).
+- `verification-screenshot.png` — the fresh screenshot the verifier judged.
+- `step-*.png` — screenshots captured during the CUA loop itself.

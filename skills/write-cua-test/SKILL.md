@@ -39,9 +39,11 @@ case = TestCase(
 # Android (adb device required)
 a-test run --target android --case examples/android/calculator_math.py
 
-# Browser (bun + extension path required)
-a-test run --target browser --case browser/cases/google-oauth.ts \
-  --extension /path/to/ext --output-dir /tmp/out
+# Browser (bun required)
+a-test run --target browser --case examples/vibebrowser/vibe-install-smoke.yaml \
+  --output-dir /tmp/out
+# No --extension flag: to test a Chrome extension, write a case whose goal
+# navigates to the Chrome Web Store listing and installs it via the browser UI.
 
 # View the GIF
 open /tmp/a-test-output/demo.gif   # macOS

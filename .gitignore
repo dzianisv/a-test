@@ -22,6 +22,9 @@ stage-*.png
 # Keep committed showcase assets
 !docs/showcase/**/*.gif
 
+# Keep committed demo assets
+!assets/*.gif
+
 # Agent/IDE tooling
 .agents/
 .claude/
