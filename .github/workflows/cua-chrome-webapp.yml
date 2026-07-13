@@ -18,6 +18,9 @@ on:
     - cron: '0 8 * * *'   # daily at 08:00 UTC — monitors live site health
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   cua-webapp:
     runs-on: ubuntu-latest

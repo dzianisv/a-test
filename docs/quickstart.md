@@ -16,12 +16,20 @@ cd a-test
 pip install -e .
 ```
 
-## Android quickstart
-
-Requirements: `adb` in PATH, connected device or emulator, LLM API key.
+Once v0.1.0 ships to PyPI:
 
 ```bash
-export OPENAI_API_KEY=sk-...
+pip install a-test
+```
+
+## Android quickstart
+
+Requires: `adb` in PATH, a connected device or emulator, an Azure OpenAI key.
+
+```bash
+export AZURE_CUA_API_KEY=...
+export AZURE_CUA_BASE_URL=https://<your-resource>.openai.azure.com/
+export AZURE_CUA_MODEL=gpt-5.4
 
 a-test run \
   --target android \
@@ -33,25 +41,41 @@ open /tmp/a-test-output/demo.gif
 
 ## Browser quickstart
 
-Requirements: `bun` in PATH (https://bun.sh), built extension directory, Azure CUA credentials.
+Requires: `bun` in PATH (https://bun.sh), `xdotool`, `scrot`, `ffmpeg`, and an Azure OpenAI key.
 
 ```bash
 export AZURE_CUA_API_KEY=...
-export AZURE_CUA_BASE_URL=https://...
+export AZURE_CUA_BASE_URL=https://<your-resource>.openai.azure.com/
+export CUA_MODEL=gpt-5.4
 
 a-test run \
   --target browser \
-  --case browser/cases/google-oauth.ts \
-  --extension /path/to/ext/dist/prod-unpacked \
+  --case examples/open-weather.yaml \
   --output-dir /tmp/a-test-output
 
 open /tmp/a-test-output/demo.gif
 ```
 
+Instead of `AZURE_CUA_*`, the browser runner also accepts `AZURE_DEV_AI_API_KEY`
+(+ `AZURE_DEV_AI_BASE_URL`) or plain `OPENAI_API_KEY` (+ optional
+`OPENAI_BASE_URL`). `AZURE_OPENAI_API_KEY`/`AZURE_OPENAI_ENDPOINT` are **not**
+supported here — those are read by the Android runner (`a_test/client.py`) only.
+
+### Testing a Chrome extension
+
+There is no `--extension` flag. To test a Chrome extension, write a YAML case
+whose goal navigates Chrome to the Chrome Web Store and installs the extension
+through the normal browser UI, just like a user would. See
+`examples/install-extension.yaml` for a real, working example of this pattern.
+
 ## View GIF output
 
+`--output-dir` is whatever directory you pass on the command line; the
+examples above use `/tmp/a-test-output` purely for illustration. Each run
+writes:
+
 ```
-/tmp/a-test-output/
+<output-dir>/
   step-01-screenshot.png
   step-02-tap.png
   ...

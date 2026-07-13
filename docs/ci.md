@@ -304,7 +304,7 @@ The `a-test` package registers a `pytest11` entry point so pytest picks up
 the `cua_case` fixture automatically:
 
 ```bash
-pip install a-test
+pip install a-test  # once released; use `pip install -e .` against a checkout today
 pytest tests/
 ```
 

@@ -1,5 +1,4 @@
 """Action dispatch for a-test Android harness."""
-import subprocess
 import time
 
 from .android import adb
@@ -51,13 +50,7 @@ def execute_action(action: dict, speed_multiplier: float = 1.0):
 
     elif act == "type":
         text = action.get("text", "")
-        # shell=True so the host shell handles the quoting; _adb_escape
-        # sanitises characters that confuse `adb shell input text`.
-        escaped = _adb_escape(text)
-        subprocess.run(
-            f"adb shell input text '{escaped}'",
-            capture_output=True, timeout=30, shell=True,
-        )
+        adb("shell", "input", "text", _adb_escape(text))
         _sleep(0.3, speed_multiplier)
         return f"typed '{text}'"
 

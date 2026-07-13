@@ -3,6 +3,9 @@
 
 [![Watch the demo](https://img.shields.io/badge/▶-Watch_the_demo-red?style=for-the-badge&logo=youtube)](https://youtu.be/qFeNZg59QJ0)
 
+[![Lint](https://github.com/dzianisv/a-test/actions/workflows/lint.yml/badge.svg)](https://github.com/dzianisv/a-test/actions/workflows/lint.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 **Stop pet-sitting your AI coding agent.**
 
 AI coding agents write code fast, but a green CI run doesn't prove the app actually works — someone still has to babysit the PR and click through it by hand. a-test turns your product's user journeys — the ones already scoped in a PRD — into computer-use test cases committed as YAML, then executes them in CI to drive the real app: clicking, typing, waiting, and verifying what's actually on screen.
@@ -21,7 +24,7 @@ Models:
 Test Android apps and browser extensions with a computer-use agent.
 
 Apps:
-- Mobile: in Android emulator, iOS emulator 9comming soon...)
+- Mobile: in Android emulator today; iOS is out of scope for v0.1 (see TDD.md's Scope Boundaries)
 - WebApps: in Google Chrome
 - Chrome Extensions: in Google Chrome
 - Terminal/CLI apps: spawns linux terminal
@@ -185,12 +188,9 @@ to the real `pip install a-test`.
 
 The browser backend is a Bun/TypeScript runner that lives in `browser/` and runs from
 a repo checkout — it is not shipped inside the pip package. For `--target browser`,
-clone the repo and install [bun](https://bun.sh):
+also install [bun](https://bun.sh):
 
 ```bash
-git clone https://github.com/dzianisv/a-test
-cd a-test
-pip install -e .
 cd browser && bun install
 ```
 
@@ -265,7 +265,9 @@ the final screenshot, assembles `demo.gif`, and writes `result.json`.
 
 **Optional: Reasoning captions in GIFs**
 
-Install Pillow to add text overlays showing the agent's reasoning at each step:
+Install Pillow to add text overlays showing the agent's reasoning at each step
+(pinned-SHA source install, works today; `pip install a-test[gif-captions]`
+becomes available once v0.1.0 is released on PyPI):
 
 ```bash
 pip install "git+https://github.com/dzianisv/a-test.git@<commit-sha>#egg=a-test[gif-captions]"

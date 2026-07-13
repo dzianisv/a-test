@@ -2,6 +2,9 @@ name: CUA Chrome-Sync Login (Terminal + Browser)
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   cua-chrome-sync-login:
     runs-on: ubuntu-latest

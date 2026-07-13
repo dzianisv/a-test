@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a problem with a-test (CLI, CUA loop, judge, browser runner, or a CI action)
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please include enough detail that the issue is
+        reproducible — CUA/E2E test failures especially depend on the exact case, target, and model.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including the expected vs. actual behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction steps
+      description: |
+        Exact command(s) run, e.g.:
+        `a-test run --target android --case examples/android/calculator_math.py`
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: |
+        - a-test version / commit SHA
+        - Python version (`python --version`)
+        - OS
+        - Target: Android emulator / real device / browser
+        - Model/backend in use (OpenAI, Azure OpenAI, Azure Dev AI, Gemini, xAI, H Company Holo)
+      placeholder: |
+        a-test:
+        Python:
+        OS:
+        Target:
+        Model:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs, output, or result.json
+      description: Paste any relevant CLI output, stack trace, or `result.json` content. Please redact API keys/secrets.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I have not included any secrets, API keys, or tokens in this report.
+          required: true

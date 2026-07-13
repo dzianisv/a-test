@@ -2,6 +2,9 @@ name: Browser CUA
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   browser-cua:
     runs-on: ubuntu-latest

@@ -39,4 +39,5 @@
 - [ ] Commit or upload demo artifacts to repo or release notes
 - [ ] Docs/actions/examples pin to a commit SHA, not `@main` (docs/VERSIONING.md) — see PR remediating install/reuse audit findings
 - [ ] Create and push a `vX.Y.Z` tag (the Publish to PyPI workflow publishes it automatically)
+- [ ] Push the tag by exact name only (`git push origin vX.Y.Z`) — never a blanket `git push --tags` / `git push --all --tags`. This clone/worktree has stray local-only tags `v1.2.3` and `backup/fix-install-reuse-remediation-pre-reconcile` that are NOT reachable from `main` and are not present on origin (origin currently has zero tags); a blanket tag push would publish them too and could trigger an unintended run of `publish-pypi.yml`, which fires on any `v*` tag push
 - [ ] Configure PyPI Trusted Publishing for `dzianisv/a-test`, workflow `publish-pypi.yml`, environment `pypi`

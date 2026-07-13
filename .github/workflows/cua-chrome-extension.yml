@@ -18,6 +18,9 @@ on:
       - '.github/workflows/cua-chrome-extension.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   cua-extension:
     runs-on: ubuntu-latest

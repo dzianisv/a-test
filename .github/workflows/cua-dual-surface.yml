@@ -2,6 +2,9 @@ name: CUA Dual Surface (Terminal + Browser)
 
 on: [push, pull_request]
 
+permissions:
+  contents: read
+
 jobs:
   cua-dual-surface:
     runs-on: ubuntu-latest

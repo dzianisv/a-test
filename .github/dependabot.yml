@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Root Python package (pyproject.toml)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Root Node package (package.json — CUA core primitives)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Browser runner (browser/package.json — Bun/TypeScript)
+  - package-ecosystem: "npm"
+    directory: "/browser"
+    schedule:
+      interval: "weekly"
+
+  # GitHub Actions used in workflows and composite actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

@@ -22,11 +22,24 @@ Before shipping, verify all items in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md
 
 ## CI / Quality
 
-All 4 workflows must pass before merge:
-1. **Lint** — code style
+`.github/workflows/` has 11 workflow files.
+
+**Merge gates** — run on every push/PR (no path filter) and must pass before merge:
+1. **Lint** — code style (`pyflakes`) plus a packaging smoke test (build the wheel with `python -m build`, `twine check`, install into a fresh venv, run `a-test --help`)
 2. **Browser CUA** — open-weather.yaml (real-world web test)
 3. **Android CUA** — calculator_math.py (real-world mobile test)
-4. **CUA Chrome Extension** — vibe-install-smoke.yaml (CWS accessibility)
+4. **CUA Chrome-Sync Login (Terminal + Browser)** — dual-surface chrome-sync login flow
+5. **CUA Dual Surface (Terminal + Browser)** — combined terminal + browser CUA scenario
+
+**Path-filtered merge gates** — push/PR-triggered but only run when their relevant paths change (also support manual `workflow_dispatch`):
+6. **CUA - Android App (opencode)** — Android CUA scenario using opencode; gated on `examples/android/**`, `a_test/**`
+7. **CUA - Chrome Extension (Vibe AI)** — vibe-install-smoke.yaml (CWS accessibility); gated on `examples/vibebrowser/**`, `browser/**`
+8. **CUA - Chrome Web App (vibebrowser.app)** — vibebrowser.app web app smoke test; gated on `examples/vibebrowser/vibebrowser-webapp.yaml`, `browser/**` (also runs on a daily schedule to monitor live site health)
+9. **External Consumer Proof** (`external-consumer.yml`) — proves external consumers can `pip install` a built wheel and reference the composite actions via `uses: dzianisv/a-test/.github/actions/a-test-*@<ref>`; gated on `pyproject.toml`, `a_test/**`, `.github/actions/**`. Triggers on PR (path-filtered), on push to `main` (path-filtered), and manual `workflow_dispatch` — it is a merge gate only for PRs touching those paths.
+
+**Not merge gates** — scheduled/manual or release-only, never required for merge:
+10. **CUA Chrome-Sync Login (H Company Holo)** — daily cron (`workflow_dispatch` + `schedule`) smoke test of the H Company Holo backend; no push/PR trigger.
+11. **Publish to PyPI** (`publish-pypi.yml`) — only runs on `v*` tag pushes to build and publish a release.
 
 Each CUA job produces:
 - Screenshots (step-00.png, step-01-a1.png, ...)
@@ -52,7 +65,8 @@ Each CUA job produces:
 
 ## CI Integration Helper Actions
 
-Use `.github/actions/a-test-android@main` or `.github/actions/a-test-browser@main` in other repos:
+Use `dzianisv/a-test/.github/actions/a-test-android@main` or
+`dzianisv/a-test/.github/actions/a-test-browser@main` in other repos:
 
 ```yaml
 - uses: dzianisv/a-test/.github/actions/a-test-android@main
