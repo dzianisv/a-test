@@ -225,6 +225,10 @@ Written to `--output-dir` (default: `/tmp/a-test-output/`).
 | `verification.json` | `verifyResult()` | `{passed, raw, evidence, error}` |
 | `demo.gif` | `assembleGif()` via ffmpeg | Assembled from `stage-NN-*.png` and `step-NN*.png` files |
 
+### README pilot-project showcases
+
+External pilot-project demos (e.g. OpenCode Mobile) embed `docs/showcase/opencode-smoke.gif`, produced offline via ffmpeg two-pass palette conversion (`palettegen` + `paletteuse`) from the pilot project's own real screen recording — not assembled from a-test's per-step screenshots. A static screenshot is kept only as a fallback if the recording-derived GIF is unavailable, alongside a link to the original MP4 for the full recording.
+
 ---
 
 ## Installation

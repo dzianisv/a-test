@@ -114,6 +114,8 @@ Every run writes to `--output-dir` (default: `/tmp/a-test-output/`):
 | `verification.json` | Browser | Post-loop verifier result (when `verification` defined) |
 | `demo.gif` | Both | Animated GIF of the full run |
 
+Pilot-project showcases in the README follow the same rule for external evidence: the animation embedded is derived from a real screen recording (e.g. `docs/showcase/opencode-smoke.gif`, built via ffmpeg two-pass palette conversion from opencode-mobile's own CI recording), never synthetic frames, with a static screenshot kept as a fallback and the full recording linked separately when only a video is available.
+
 Exit code: `0` = pass, `1` = fail.
 
 ### Python API
