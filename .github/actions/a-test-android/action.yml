@@ -68,9 +68,14 @@ runs:
         repository: ${{ steps.source.outputs.repository }}
         ref: ${{ steps.source.outputs.ref }}
         path: _a-test
+        # pyproject.toml declares `readme = "README.md"` (PEP 621 static
+        # readme reference), so README.md is included alongside a_test/ and
+        # pyproject.toml to keep the setuptools build backend's metadata
+        # resolution robust for this sparse, non-editable checkout.
         sparse-checkout: |
           a_test
           pyproject.toml
+          README.md
 
     - name: Install a-test
       # Installed editable from the resolved runner source (local checkout
