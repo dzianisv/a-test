@@ -15,6 +15,14 @@ name: External Consumer Proof
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+      - 'a_test/**'
+      - '.github/actions/**'
+      - '.github/workflows/external-consumer.yml'
   pull_request:
     paths:
       - 'pyproject.toml'
@@ -118,6 +126,20 @@ jobs:
     permissions:
       contents: read
     timeout-minutes: 20
+    # SKIPPED on pull_request: `uses: dzianisv/a-test/...@main` always
+    # resolves against the CURRENT default branch, never against this PR's
+    # own (unmerged) commits -- there is no `uses:` syntax that can pin to
+    # "whatever ref this workflow run's own head commit is" (see the
+    # "WHY `@main`" note below for the actionlint/GitHub-docs citations
+    # proving `uses:` accepts no expression context at all). Running this
+    # job on `pull_request` would therefore ALWAYS test main's current state
+    # regardless of the PR's diff -- a false, PR-diff-independent signal
+    # that would either always pass or always fail without the PR's changes
+    # ever being the cause. Restricting it to `push` (post-merge, so `@main`
+    # now genuinely includes what was just merged) and `workflow_dispatch`
+    # (manual, on-demand) keeps it a real regression sentinel instead of a
+    # misleading required check on every unrelated PR.
+    if: github.event_name != 'pull_request'
     steps:
       # No checkout of this repo is needed for the action call itself -- the
       # composite action does its own remote checkout of dzianisv/a-test
