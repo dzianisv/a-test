@@ -22,7 +22,10 @@ Real verification, not just "it should work". Include actual command output wher
 - [ ] Changes are scoped to a single concern (no unrelated refactors).
 - [ ] I ran the relevant checks above and included their output.
 - [ ] No secrets, API keys, or `.env` files are included in this PR.
-- [ ] No demo screenshots/GIFs/videos are committed to the repo (publish as PR/issue attachments
-      instead — see [skills/a-test-video-github-upload/SKILL.md](../skills/a-test-video-github-upload/SKILL.md)).
+- [ ] No test-run screenshots/GIFs/videos (per-run `--output-dir` artifacts, e.g. `step-*.png`,
+      `recording.mp4`) are committed to the repo — publish those as PR/issue attachments instead,
+      see [skills/a-test-video-github-upload/SKILL.md](../skills/a-test-video-github-upload/SKILL.md).
+      Curated, reviewed public demo assets under `assets/`, `docs/showcase/`, or
+      `examples/screenshots/` (see [README.md](../README.md#demo-agents-in-action)) are fine to commit.
 - [ ] If this adds product/agent-behavior coverage, it's a real CUA/E2E test case (not a new mock
       or unit test) — see [CONTRIBUTING.md](../CONTRIBUTING.md#testing-philosophy).
