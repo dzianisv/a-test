@@ -88,7 +88,7 @@ Reference implementation: `tests/cua/cws-visual-install.ts` in [VibeTechnologies
 
 **[OpenCode Mobile](https://github.com/dzianisv/opencode-mobile)**, an open-source Android client for the opencode AI coding agent, is CUA-tested end to end on a real Android emulator: the agent adds a server connection, connects and confirms the session list loads a pre-existing session from the live opencode server (proving real data, not an empty screen), opens a new AI coding session, and submits a real Python task — `helloworld.py` plus a `helloworld_test.py` pytest suite — then waits for the agent to finish writing files and verifies the output before checking the Settings/model screen. Verification is layered: a session pre-created via opencode's own HTTP API must be visible in-app (deterministic, server-side truth) alongside on-screen text/state assertions at each phase, with every step screen-recorded.
 
-![OpenCode Mobile CUA showcase](https://raw.githubusercontent.com/dzianisv/opencode-mobile/main/docs-site/screenshots/02.png)
+![OpenCode Mobile CUA showcase](docs/showcase/opencode-mobile-onboarding.gif)
 
 **▶ Watch the full recording: [mp4](https://raw.githubusercontent.com/dzianisv/opencode-mobile/main/docs-site/demo.mp4)**
 
