@@ -8,7 +8,7 @@ across API levels, so this exercises real multi-step CUA (find the search
 affordance, type into it, read live results) without depending on an app
 that may not exist on a given image.
 """
-from agentprobe import TestCase, run_case
+from a_test import TestCase, run_case
 
 case = TestCase(
     name="settings_search",
@@ -34,6 +34,6 @@ case = TestCase(
 )
 
 if __name__ == "__main__":
-    result = run_case(case, output_dir="/tmp/agentprobe-output")
+    result = run_case(case, output_dir="/tmp/a-test-output")
     print(f"Verdict: {result['verdict']} -- {result.get('reason', '')}")
     assert result["verdict"] == "pass", f"Test failed: {result.get('reason')}"

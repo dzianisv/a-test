@@ -1,5 +1,5 @@
 """Basic Android smoke test: verifies the Calculator app launches on a bare emulator."""
-from agentprobe import TestCase, run_case
+from a_test import TestCase, run_case
 
 case = TestCase(
     name="basic_smoke",
@@ -26,6 +26,6 @@ case = TestCase(
 )
 
 if __name__ == "__main__":
-    result = run_case(case, output_dir="/tmp/agentprobe-output")
+    result = run_case(case, output_dir="/tmp/a-test-output")
     print(f"Verdict: {result['verdict']} -- {result.get('reason', '')}")
     assert result["verdict"] == "pass", f"Test failed: {result.get('reason')}"

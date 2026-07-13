@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run chrome-sync login (terminal + browser) example
-        uses: ./.github/actions/agentprobe-desktop
+        uses: ./.github/actions/a-test-desktop
         with:
           case: examples/dual-surface/chrome-sync-login.ts
           output-dir: /tmp/chrome-sync-login-output

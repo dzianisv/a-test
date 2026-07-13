@@ -1,16 +1,16 @@
 ---
 name: write-cua-test
-description: Write a new computer-use agent (CUA) test case for agentprobe. Use when asked to add a test for an Android app or browser extension behavior.
+description: Write a new computer-use agent (CUA) test case for a-test. Use when asked to add a test for an Android app or browser extension behavior.
 ---
 
 # Write a CUA Test Case
 
 ## Schema
 
-Every agentprobe test case is a `TestCase` dataclass:
+Every a-test test case is a `TestCase` dataclass:
 
 ```python
-from agentprobe import TestCase
+from a_test import TestCase
 
 case = TestCase(
     name="feature_smoke",              # snake_case, unique
@@ -37,15 +37,15 @@ case = TestCase(
 
 ```bash
 # Android (adb device required)
-agentprobe run --target android --case examples/android/basic_smoke.py
+a-test run --target android --case examples/android/basic_smoke.py
 
 # Browser (bun + extension path required)
-agentprobe run --target browser --case browser/cases/google-oauth.ts \
+a-test run --target browser --case browser/cases/google-oauth.ts \
   --extension /path/to/ext --output-dir /tmp/out
 
 # View the GIF
-open /tmp/agentprobe-output/demo.gif   # macOS
-xdg-open /tmp/agentprobe-output/demo.gif  # Linux
+open /tmp/a-test-output/demo.gif   # macOS
+xdg-open /tmp/a-test-output/demo.gif  # Linux
 ```
 
 ## Reading the output

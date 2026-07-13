@@ -1,6 +1,6 @@
-name: 'agentprobe Desktop CUA'
+name: 'a-test Desktop CUA'
 description: >-
-  Run agentprobe dual-surface (terminal + browser) CUA examples via bun.
+  Run a-test dual-surface (terminal + browser) CUA examples via bun.
   The vision-judge backend is auto-detected at runtime by the script itself,
   in priority order: AZURE_CUA_API_KEY (+ AZURE_CUA_BASE_URL), then
   OPENAI_API_KEY (+ OPENAI_BASE_URL), then HAI_API_KEY (+ optional
@@ -14,7 +14,7 @@ inputs:
     required: true
   output-dir:
     description: 'Directory for screenshots, demo.gif, recording, result files'
-    default: '/tmp/agentprobe-output'
+    default: '/tmp/a-test-output'
   model:
     description: 'Azure OpenAI model deployment name (also passed as CUA_MODEL for OpenAI/H Company runs)'
     default: 'gpt-5.4'
@@ -25,9 +25,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install agentprobe
+    - name: Install a-test
       shell: bash
-      run: pip install agentprobe
+      run: pip install a-test
 
     - name: Resolve dual-surface runner source (local vs. remote invocation)
       id: source
@@ -35,11 +35,11 @@ runs:
       env:
         # github.action_repository / github.action_ref are ONLY populated
         # when this action is referenced remotely, e.g.
-        # `uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@v1`
+        # `uses: dzianisv/a-test/.github/actions/a-test-desktop@v1`
         # from a downstream consumer's own workflow (GitHub Actions docs:
         # "the owner and repository name of the action" / "the ref of the
         # action being executed"). For a LOCAL reference
-        # (`uses: ./.github/actions/agentprobe-desktop`, used by this repo's
+        # (`uses: ./.github/actions/a-test-desktop`, used by this repo's
         # own cua-*.yml workflows), there is no separate action repo to name,
         # so both are empty strings. Per GitHub's own guidance ("Do not use
         # [action_ref/action_repository] in the run keyword. To make this
@@ -53,22 +53,22 @@ runs:
           # Remote consumer: this action's own code was fetched from
           # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching dual-surface
           # runner (core/surfaces/examples) from that SAME repo+ref into a
-          # dedicated _agentprobe checkout — keeping the runner pinned in
+          # dedicated _a-test checkout — keeping the runner pinned in
           # lockstep with whatever version of this action the consumer chose,
-          # instead of silently drifting to dzianisv/agentprobe's default
+          # instead of silently drifting to dzianisv/a-test's default
           # branch regardless of pinning.
           echo "mode=remote" >> "$GITHUB_OUTPUT"
-          echo "dir=${GITHUB_WORKSPACE}/_agentprobe" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
         else
           # Local invocation: the calling workflow's own `actions/checkout`
           # step already placed the exact revision under test (this IS the
-          # agentprobe repo — core/surfaces/examples/dual-surface live at the
+          # a-test repo — core/surfaces/examples/dual-surface live at the
           # workspace root) — reuse it directly instead of re-fetching a
           # second, potentially-stale copy of the remote default branch.
           echo "mode=local" >> "$GITHUB_OUTPUT"
           echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
         fi
-        echo "repository=${ACTION_REPOSITORY:-dzianisv/agentprobe}" >> "$GITHUB_OUTPUT"
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
         echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
 
     - name: Checkout dual-surface runner (remote consumers only)
@@ -77,7 +77,7 @@ runs:
       with:
         repository: ${{ steps.source.outputs.repository }}
         ref: ${{ steps.source.outputs.ref }}
-        path: _agentprobe
+        path: _a-test
         sparse-checkout: |
           core
           surfaces
@@ -94,8 +94,8 @@ runs:
     - name: Install desktop runner deps
       shell: bash
       env:
-        AGENTPROBE_DESKTOP_DIR: ${{ steps.source.outputs.dir }}
-      run: cd "$AGENTPROBE_DESKTOP_DIR" && bun install
+        A_TEST_DESKTOP_DIR: ${{ steps.source.outputs.dir }}
+      run: cd "$A_TEST_DESKTOP_DIR" && bun install
 
     - name: Install system deps
       shell: bash
@@ -115,11 +115,11 @@ runs:
       shell: bash
       env:
         # steps.source.outputs.dir (set above) resolves to the workspace root
-        # for a local invocation (this repo IS agentprobe — reuse the exact
-        # revision under test) or to the dedicated ./_agentprobe checkout for
+        # for a local invocation (this repo IS a-test — reuse the exact
+        # revision under test) or to the dedicated ./_a-test checkout for
         # a remote consumer — see the "Resolve dual-surface runner source"
         # step for the full local-vs-remote rationale.
-        AGENTPROBE_DESKTOP_DIR: ${{ steps.source.outputs.dir }}
+        A_TEST_DESKTOP_DIR: ${{ steps.source.outputs.dir }}
         CUA_MODEL: ${{ inputs.model }}
         DISPLAY: ':99'
         # All `inputs.*` are threaded through `env:` rather than interpolated
@@ -140,5 +140,5 @@ runs:
         if [ -n "$HAI_BASE_URL_INPUT" ]; then
           export HAI_BASE_URL="$HAI_BASE_URL_INPUT"
         fi
-        cd "$AGENTPROBE_DESKTOP_DIR"
+        cd "$A_TEST_DESKTOP_DIR"
         bun run "$CASE_INPUT" "$OUTPUT_DIR_INPUT"

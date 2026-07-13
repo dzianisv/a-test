@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from PIL import Image
 
-from agentprobe.recording import overlay_text_on_frame
+from a_test.recording import overlay_text_on_frame
 
 
 class TestCaptionOverlay:

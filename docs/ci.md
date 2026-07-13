@@ -2,13 +2,13 @@
 
 ## Quick start: reusable actions
 
-The easiest way to add agentprobe to any GitHub Actions workflow is via the
+The easiest way to add a-test to any GitHub Actions workflow is via the
 reusable composite actions in this repo.
 
 ### Android
 
 ```yaml
-- uses: dzianisv/agentprobe/.github/actions/agentprobe-android@main
+- uses: dzianisv/a-test/.github/actions/a-test-android@main
   with:
     case: path/to/my-test.yaml
     api-level: '33'
@@ -19,12 +19,12 @@ reusable composite actions in this repo.
     AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
 ```
 
-The action handles: `pip install agentprobe`, `ffmpeg`, KVM device, and the emulator runner.
+The action handles: `pip install a-test`, `ffmpeg`, KVM device, and the emulator runner.
 
 ### Browser
 
 ```yaml
-- uses: dzianisv/agentprobe/.github/actions/agentprobe-browser@main
+- uses: dzianisv/a-test/.github/actions/a-test-browser@main
   with:
     case: path/to/my-test.yaml
     output-dir: /tmp/cua-output
@@ -33,12 +33,12 @@ The action handles: `pip install agentprobe`, `ffmpeg`, KVM device, and the emul
     AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
 ```
 
-The action handles: `pip install agentprobe`, bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and Xvfb startup.
+The action handles: `pip install a-test`, bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and Xvfb startup.
 
 ### Desktop (Terminal + Browser)
 
 ```yaml
-- uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@main
+- uses: dzianisv/a-test/.github/actions/a-test-desktop@main
   with:
     case: examples/dual-surface/chrome-sync-login.ts
     output-dir: /tmp/cua-output
@@ -49,7 +49,7 @@ The action handles: `pip install agentprobe`, bun, browser runner deps, `xvfb`, 
 ```
 
 ```yaml
-- uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@main
+- uses: dzianisv/a-test/.github/actions/a-test-desktop@main
   with:
     case: examples/dual-surface/terminal-and-browser.ts
     output-dir: /tmp/cua-output
@@ -58,7 +58,7 @@ The action handles: `pip install agentprobe`, bun, browser runner deps, `xvfb`, 
 ```
 
 ```yaml
-- uses: dzianisv/agentprobe/.github/actions/agentprobe-desktop@main
+- uses: dzianisv/a-test/.github/actions/a-test-desktop@main
   with:
     case: examples/dual-surface/chrome-sync-login.ts
     output-dir: /tmp/cua-output
@@ -68,7 +68,7 @@ The action handles: `pip install agentprobe`, bun, browser runner deps, `xvfb`, 
     # HAI_BASE_URL optional — defaults to https://api.hcompany.ai/v1/
 ```
 
-The action handles: `pip install agentprobe`, bun, a sparse checkout of `core`,
+The action handles: `pip install a-test`, bun, a sparse checkout of `core`,
 `surfaces`, and `examples/dual-surface`, `xvfb`, `xdotool`, `scrot`, `ffmpeg`,
 `xterm`, `bsdutils` (for the `script` command used by `chrome-sync-login.ts`),
 and Xvfb startup. The vision-judge backend is auto-detected at runtime by the
@@ -82,7 +82,7 @@ then `OPENAI_API_KEY` (+ `OPENAI_BASE_URL`), then `HAI_API_KEY` (+ optional
 Uses `reactivecircus/android-emulator-runner@v2` on `ubuntu-latest`.
 
 Key setup steps:
-1. `pip install agentprobe` + `sudo apt-get install -y ffmpeg`
+1. `pip install a-test` + `sudo apt-get install -y ffmpeg`
 2. Enable KVM (required for hardware acceleration):
    ```yaml
    - name: Enable KVM
@@ -101,7 +101,7 @@ Required secrets: `AZURE_CUA_API_KEY`, `AZURE_CUA_BASE_URL`.
 Runs on `ubuntu-latest` with `Xvfb` for a virtual display.
 
 Key setup steps:
-1. `pip install agentprobe`, install bun via `oven-sh/setup-bun@v2`
+1. `pip install a-test`, install bun via `oven-sh/setup-bun@v2`
 2. `cd browser && bun install`
 3. `sudo apt-get install -y xvfb xdotool scrot ffmpeg`
 4. Start Xvfb and export `DISPLAY=:99`
@@ -143,7 +143,7 @@ Company's hosted API.
 
 The workflow itself is now a thin wrapper: a "Verify HAI_API_KEY secret is
 configured" step (fails fast with `::error::` if the secret is unset) followed
-by a single `uses: ./.github/actions/agentprobe-desktop` step — the same
+by a single `uses: ./.github/actions/a-test-desktop` step — the same
 reusable action documented in [Desktop (Terminal + Browser)](#desktop-terminal--browser)
 above, also used by `cua-chrome-sync-login.yml` and `cua-dual-surface.yml`. No
 install/Xvfb/run steps are duplicated inline anymore.
@@ -167,32 +167,48 @@ up a workflow.
 
 | Secret | Used by | Notes |
 | --- | --- | --- |
-| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-dual-surface.yml`, `cua-chrome-webapp.yml`, `agentprobe-android`/`agentprobe-browser`/`agentprobe-desktop` actions | Azure OpenAI-compatible CUA planner/vision key. |
+| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-dual-surface.yml`, `cua-chrome-webapp.yml`, `a-test-android`/`a-test-browser`/`a-test-desktop` actions | Azure OpenAI-compatible CUA planner/vision key. |
 | `AZURE_CUA_BASE_URL` | same as above | Azure endpoint base URL paired with `AZURE_CUA_API_KEY`. |
-| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `agentprobe-desktop` action, `agentprobe/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
-| `HAI_BASE_URL` | `agentprobe-desktop` action (optional `hai-base-url` input) | Optional override for the H Company Holo Models API base URL; defaults to `https://api.hcompany.ai/v1/` if unset. |
+| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `a-test-desktop` action, `a_test/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
+| `HAI_BASE_URL` | `a-test-desktop` action (optional `hai-base-url` input) | Optional override for the H Company Holo Models API base URL; defaults to `https://api.hcompany.ai/v1/` if unset. |
 
 `gh secret set` example (run locally — this reads the value from your own
 terminal/clipboard and uploads it directly to GitHub; it is never displayed,
 logged, or written to a file by this repo's tooling):
 
 ```bash
-gh secret set HAI_API_KEY --repo dzianisv/agentprobe
+gh secret set HAI_API_KEY --repo dzianisv/a-test
 ```
 
 ## pytest integration
 
-The `agentprobe` package registers a `pytest11` entry point so pytest picks up
+The `a-test` package registers a `pytest11` entry point so pytest picks up
 the `cua_case` fixture automatically:
 
 ```bash
-pip install agentprobe
+pip install a-test
 pytest tests/
 ```
 
 No `conftest.py` needed — the fixture is auto-loaded.
 
+## Publishing to PyPI
+
+The [Publish to PyPI workflow](../.github/workflows/publish-pypi.yml) builds,
+checks, smoke-tests, and publishes a release when a `vX.Y.Z` tag is pushed.
+Before the first release, configure a PyPI Trusted Publisher with:
+
+| PyPI setting | Value |
+| --- | --- |
+| Owner | `dzianisv` |
+| Repository | `a-test` |
+| Workflow | `publish-pypi.yml` |
+| Environment | `pypi` |
+
+The workflow uses GitHub OIDC and does not require a `PYPI_TOKEN` repository
+secret.
+
 ## Full workflow templates
 
-See [skills/agentprobe-ci/SKILL.md](../skills/agentprobe-ci/SKILL.md) for full
+See [skills/a-test-ci/SKILL.md](../skills/a-test-ci/SKILL.md) for full
 copy-paste workflow YAML.

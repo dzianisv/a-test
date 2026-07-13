@@ -1,4 +1,4 @@
-"""bench.run -- multi-backend CUA benchmark runner built on top of agentprobe.
+"""bench.run -- multi-backend CUA benchmark runner built on top of a-test.
 
 Runs the same TestCase(s) across multiple OpenAI-compatible backends (defined
 in bench/backends.yaml), records pass/fail/error verdicts, timing, token/cost
@@ -26,7 +26,7 @@ from pathlib import Path
 
 import yaml
 
-from agentprobe.cli import _load_case
+from a_test.cli import _load_case
 
 BENCH_DIR = Path(__file__).resolve().parent
 DEFAULT_BACKENDS_YAML = BENCH_DIR / "backends.yaml"
@@ -107,15 +107,15 @@ def write_results_atomic(path, data) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Real backend integration: monkeypatch agentprobe.loop.make_client for the
-# duration of a single run_case call, per the contract with agentprobe/client.py.
+# Real backend integration: monkeypatch a_test.loop.make_client for the
+# duration of a single run_case call, per the contract with a_test/client.py.
 # ---------------------------------------------------------------------------
 
 def is_two_tier_backend(backend_cfg: dict) -> bool:
     """True for grounding backends (e.g. holo) that need a separate planner.
 
     Signalled by the presence of `planner_model` in backends.yaml -- see the
-    header comment there and agentprobe/grounding.py.
+    header comment there and a_test/grounding.py.
     """
     return bool(backend_cfg.get("planner_model"))
 
@@ -131,13 +131,13 @@ def _run_two_tier_case_for_backend(case, backend_cfg, output_dir, **kwargs):
     `backend_cfg`'s model/base_url/api_key_env describe the GROUNDER (Holo);
     planner_model/planner_base_url/planner_api_key_env describe the PLANNER
     (a normal chat model). The planner client stands in for
-    agentprobe.loop.make_client (used for both the CUA loop and the final
+    a_test.loop.make_client (used for both the CUA loop and the final
     vision judge, same as the single-tier path); the grounder is wired in as
     run_case's grounding_fn, used only to resolve "tap" coordinates.
     """
-    import agentprobe.loop as loop_module
-    from agentprobe.client import make_client as real_make_client
-    from agentprobe.grounding import make_grounding_fn
+    import a_test.loop as loop_module
+    from a_test.client import make_client as real_make_client
+    from a_test.grounding import make_grounding_fn
 
     planner_base_url = _resolve_url_field(backend_cfg, "planner_base_url")
     if not planner_base_url:
@@ -182,8 +182,8 @@ def _run_case_for_backend(case, backend_cfg, output_dir, **kwargs):
     if is_two_tier_backend(backend_cfg):
         return _run_two_tier_case_for_backend(case, backend_cfg, output_dir, **kwargs)
 
-    import agentprobe.loop as loop_module
-    from agentprobe.client import make_client as real_make_client
+    import a_test.loop as loop_module
+    from a_test.client import make_client as real_make_client
 
     resolved_base_url = resolve_base_url(backend_cfg)
     if not resolved_base_url:
@@ -295,7 +295,7 @@ def run_one(case, backend_cfg: dict, repeat_index: int, output_dir: str, dry_run
 def _parse_args(argv=None):
     parser = argparse.ArgumentParser(
         prog="python -m bench.run",
-        description="Run agentprobe TestCases across multiple LLM backends and produce a leaderboard.",
+        description="Run a-test TestCases across multiple LLM backends and produce a leaderboard.",
     )
     parser.add_argument("--cases", required=True,
                          help="Comma-separated paths to case files (.py/.json/.yaml)")

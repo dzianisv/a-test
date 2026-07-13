@@ -1,10 +1,10 @@
-# agentprobe Release Readiness Checklist
+# a-test Release Readiness Checklist
 
 ## PRD Requirements
-- [ ] Framework is easy to install and use (pip install agentprobe)
+- [ ] Framework is easy to install and use (pip install a-test)
 - [ ] README has quickstart for install and use (Android + Browser)
 - [ ] README has CI integration quickstart (GitHub Actions)
-- [ ] Reusable GitHub Action helpers created (agentprobe-android, agentprobe-browser)
+- [ ] Reusable GitHub Action helpers created (a-test-android, a-test-browser)
 - [ ] Example test cases demonstrate real use (not just "verify UI visible")
 
 ## TDD Requirements
@@ -37,5 +37,5 @@
 - [ ] Run full test suite locally and in CI
 - [ ] Verify demo artifacts (GIFs/videos) are meaningful
 - [ ] Commit or upload demo artifacts to repo or release notes
-- [ ] Tag commit as release version
-- [ ] Update PyPI package if needed
+- [ ] Create and push a `vX.Y.Z` tag (the Publish to PyPI workflow publishes it automatically)
+- [ ] Configure PyPI Trusted Publishing for `dzianisv/a-test`, workflow `publish-pypi.yml`, environment `pypi`

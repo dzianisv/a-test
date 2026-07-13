@@ -3,14 +3,14 @@
 ## Install
 
 ```bash
-pip install agentprobe
+pip install a-test
 ```
 
 Or from source:
 
 ```bash
-git clone https://github.com/dzianisv/agentprobe
-cd agentprobe
+git clone https://github.com/dzianisv/a-test
+cd a-test
 pip install -e .
 ```
 
@@ -21,12 +21,12 @@ Requirements: `adb` in PATH, connected device or emulator, LLM API key.
 ```bash
 export OPENAI_API_KEY=sk-...
 
-agentprobe run \
+a-test run \
   --target android \
   --case examples/android/basic_smoke.py \
-  --output-dir /tmp/agentprobe-output
+  --output-dir /tmp/a-test-output
 
-open /tmp/agentprobe-output/demo.gif
+open /tmp/a-test-output/demo.gif
 ```
 
 ## Browser quickstart
@@ -37,19 +37,19 @@ Requirements: `bun` in PATH (https://bun.sh), built extension directory, Azure C
 export AZURE_CUA_API_KEY=...
 export AZURE_CUA_BASE_URL=https://...
 
-agentprobe run \
+a-test run \
   --target browser \
   --case browser/cases/google-oauth.ts \
   --extension /path/to/ext/dist/prod-unpacked \
-  --output-dir /tmp/agentprobe-output
+  --output-dir /tmp/a-test-output
 
-open /tmp/agentprobe-output/demo.gif
+open /tmp/a-test-output/demo.gif
 ```
 
 ## View GIF output
 
 ```
-/tmp/agentprobe-output/
+/tmp/a-test-output/
   step-01-screenshot.png
   step-02-tap.png
   ...

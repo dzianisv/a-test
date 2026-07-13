@@ -3,7 +3,7 @@
 Demonstrates the agent solving a real problem — computing 27 + 18,
 not just verifying static UI. This shows CUA can drive multi-step interactions.
 """
-from agentprobe import TestCase, run_case
+from a_test import TestCase, run_case
 
 case = TestCase(
     name="calculator_math",
@@ -39,6 +39,6 @@ case = TestCase(
 )
 
 if __name__ == "__main__":
-    result = run_case(case, output_dir="/tmp/agentprobe-output")
+    result = run_case(case, output_dir="/tmp/a-test-output")
     print(f"Verdict: {result['verdict']} -- {result.get('reason', '')}")
     assert result["verdict"] == "pass", f"Test failed: {result.get('reason')}"

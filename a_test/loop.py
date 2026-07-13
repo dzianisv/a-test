@@ -1,4 +1,4 @@
-"""CUA main loop for agentprobe Android harness."""
+"""CUA main loop for a-test Android harness."""
 import json
 import time
 from pathlib import Path
@@ -82,7 +82,7 @@ def run_cua_step(
         `client`/`model` is the PLANNER (decides *what* to do, e.g. "tap the
         Settings icon") and grounding_fn is the GROUNDER (turns that
         description into real pixel coordinates for the "tap" action). See
-        agentprobe.grounding for the Holo implementation. When None (default),
+        a_test.grounding for the Holo implementation. When None (default),
         the planner model is trusted to emit pixel x/y itself, as before.
     """
     if client is None:
@@ -223,7 +223,7 @@ def run_case(
     model: str = "gpt-4o",
     include_ui_xml: bool = False,
     verbose: bool = True,
-    output_dir: str = "/tmp/agentprobe-output",
+    output_dir: str = "/tmp/a-test-output",
     speed_multiplier: float = 1.0,
     grounding_fn=None,
 ) -> dict:
@@ -234,7 +234,7 @@ def run_case(
     per-step screenshots, and writes result.json to output_dir.
 
     grounding_fn: optional two-tier grounding callable, forwarded to
-        run_cua_step -- see its docstring (agentprobe.grounding.make_grounding_fn
+        run_cua_step -- see its docstring (a_test.grounding.make_grounding_fn
         builds the Holo one). `model`/the client made from it remains the
         PLANNER in this mode; grounding_fn resolves tap coordinates.
 

@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install agentprobe
+      - name: Install a-test
         run: pip install -e .
 
       - uses: oven-sh/setup-bun@v2
@@ -58,7 +58,7 @@ jobs:
           CUA_MODEL: gpt-5.4
           DISPLAY: ":99"
         run: |
-          agentprobe run \
+          a-test run \
             --target browser \
             --case examples/vibebrowser/vibe-install-smoke.yaml \
             --output-dir /tmp/cua-extension-output

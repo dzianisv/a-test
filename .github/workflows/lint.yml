@@ -9,5 +9,5 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip install pyflakes
-      - run: python -m pyflakes agentprobe/
-      - run: python -c "import ast, pathlib; [ast.parse(f.read_text()) for f in pathlib.Path('agentprobe').rglob('*.py')]"
+      - run: python -m pyflakes a_test/
+      - run: python -c "import ast, pathlib; [ast.parse(f.read_text()) for f in pathlib.Path('a_test').rglob('*.py')]"

@@ -28,7 +28,7 @@ Rules:
 """
 
 # Appended to SYSTEM_PROMPT when the CUA loop is running with a Holo grounding
-# backend (agentprobe.grounding). Holo resolves the ON-SCREEN LOCATION of an
+# backend (a_test.grounding). Holo resolves the ON-SCREEN LOCATION of an
 # element from a natural-language description; it does not plan. So in this
 # mode, the planner LLM is asked not to guess x/y pixel coordinates itself --
 # it names the element instead, and a separate grounding call fills in x/y

@@ -1,9 +1,9 @@
 ---
-name: agentprobe-video-github-upload
-description: Produce, upload, and VALIDATE visual proof (video / GIF / screenshot) on a GitHub PR or issue for agentprobe test runs. Use whenever a task's deliverable is a recording/demo/screenshot that must be visible on GitHub, or before claiming any uploaded media is "done". Covers the only working upload path for private repos (browser clipboard-paste to user-attachments), the release-asset path for public repos, and a hard playability gate (core/validate-video.ts) so you never ship a 0:00 / blank / broken video. Triggers: "upload the video/gif to the PR/issue", "record a demo", "attach the recording", "show it works with a video", "the video is 0 seconds / won't play", "validate the recording", CUA/E2E visual evidence.
+name: a-test-video-github-upload
+description: Produce, upload, and VALIDATE visual proof (video / GIF / screenshot) on a GitHub PR or issue for a-test runs. Use when a task's deliverable is a recording, demo, or screenshot that must be visible on GitHub.
 ---
 
-# agentprobe-video-github-upload
+# a-test-video-github-upload
 
 Two jobs: (1) get renderable media onto a GitHub PR/issue, (2) prove it actually plays/renders before
 saying done. Skipping (2) is how "byte-exact, 200, `<video>` tag present" ships a video that shows 0:00.
@@ -42,7 +42,7 @@ bug **cannot** occur. For shareable demos, transcode the mp4 offline (no realtim
   already passes this flag, but killing the recorder process (the normal shutdown path) can still leave
   `moov` after `mdat` — call `finalizeRecording({ outputDir })` (also in `core/recording.ts`) right after
   the recorder is killed/awaited to remux (`-c copy`, no re-encode) and guarantee faststart regardless of
-  how the process exited. This is exactly the bug that motivated adding this check to agentprobe (issue #6):
+  how the process exited.   This is exactly the bug that motivated adding this check to a-test (issue #6):
   a CI-produced `recording.mp4` on `main` failed the faststart check and showed 0:00 in a browser.
 - Remux any other existing file the same way: `ffmpeg -i in.mp4 -c copy -movflags +faststart out.mp4`.
 - Never ship `concat -c copy` of image-loop segments — re-encode (`-c:v libx264 -pix_fmt yuv420p -r 25 -movflags +faststart`), then re-validate.
@@ -60,7 +60,7 @@ never appear in the recording. In the test, add brief dwells (~1200ms) after eac
 screenshot (e.g. `step-01b-form-filled.png`, matching `core/screenshot.ts`'s `saveOptimizedScreenshot`) so
 the continuous recording captures each step. Verify each step is present in the frames before publishing.
 
-## Public repos (agentprobe itself): attach to a GitHub Release
+## Public repos (a-test itself): attach to a GitHub Release
 
 For a **public** repo, an mp4 attached to a GitHub Release renders as a playable `<video>` on the release
 page — `gh release create`/`gh release upload` works fine here, no browser needed:

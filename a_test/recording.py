@@ -1,4 +1,4 @@
-"""Screen recording and GIF assembly for agentprobe Android harness."""
+"""Screen recording and GIF assembly for a-test Android harness."""
 import subprocess
 import threading
 import time

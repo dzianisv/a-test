@@ -8,8 +8,8 @@ import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agentprobe.case import TestCase, Verification
-from agentprobe.cli import _load_case
+from a_test.case import TestCase, Verification
+from a_test.cli import _load_case
 
 
 def _write_temp(content: str, suffix: str) -> str:

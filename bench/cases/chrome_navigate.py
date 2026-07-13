@@ -7,7 +7,7 @@ target page because it renders a single unambiguous heading ("Example
 Domain") with no dynamic content, cookie banners, or JS-heavy UI -- a clean,
 vision-judgeable success signal.
 """
-from agentprobe import TestCase, run_case
+from a_test import TestCase, run_case
 
 case = TestCase(
     name="chrome_navigate",
@@ -33,6 +33,6 @@ case = TestCase(
 )
 
 if __name__ == "__main__":
-    result = run_case(case, output_dir="/tmp/agentprobe-output")
+    result = run_case(case, output_dir="/tmp/a-test-output")
     print(f"Verdict: {result['verdict']} -- {result.get('reason', '')}")
     assert result["verdict"] == "pass", f"Test failed: {result.get('reason')}"

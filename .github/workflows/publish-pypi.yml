@@ -1,0 +1,52 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build tools
+        run: python -m pip install --upgrade build twine
+      - name: Build distributions
+        run: python -m build
+      - name: Validate distributions
+        run: python -m twine check --strict dist/*
+      - name: Smoke-test wheel
+        run: |
+          python -m venv /tmp/a-test-wheel
+          /tmp/a-test-wheel/bin/python -m pip install dist/*.whl
+          /tmp/a-test-wheel/bin/a-test --help
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/a-test
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

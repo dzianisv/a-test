@@ -1,6 +1,6 @@
 name: vibe-sidepanel-smoke
 # PREREQUISITE: Vibe extension must be installed and Chrome profile must have it loaded.
-url: https://github.com/dzianisv/agentprobe
+url: https://github.com/dzianisv/a-test
 goal: >
   Open the Vibe extension side panel in Chrome and verify it loads without errors.
   Steps:

@@ -21,10 +21,10 @@ RUN apt-get update && apt-get install -y \
 RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:$PATH"
 
-WORKDIR /agentprobe
+WORKDIR /a-test
 COPY . .
 
 RUN pip3 install -e .
 RUN cd browser && bun install
 
-ENTRYPOINT ["agentprobe"]
+ENTRYPOINT ["a-test"]

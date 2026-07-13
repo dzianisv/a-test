@@ -1,6 +1,6 @@
 # VibeBrowser CUA Test Cases
 
-agentprobe test cases for the [Vibe Chrome extension](https://github.com/dzianisv/vibebrowser/vibe).
+a-test test cases for the [Vibe Chrome extension](https://github.com/dzianisv/vibebrowser/vibe).
 
 | Case | Speed | Trigger | What it tests |
 |---|---|---|---|
@@ -14,7 +14,7 @@ agentprobe test cases for the [Vibe Chrome extension](https://github.com/dzianis
 export OPENAI_API_KEY=sk-...
 # or AZURE_CUA_API_KEY + AZURE_CUA_BASE_URL
 
-agentprobe run --target browser \
+a-test run --target browser \
   --case examples/vibebrowser/vibe-install-smoke.yaml \
   --output-dir /tmp/vibe-test-output
 
@@ -24,4 +24,4 @@ open /tmp/vibe-test-output/demo.gif
 ## Notes
 
 - `vibe-sidepanel-smoke.yaml` requires the extension to be installed in the Chrome profile used by the runner. In CI, build the extension first and install it via the CWS or pre-loaded profile.
-- Side panel tests require a Chrome profile with the extension already installed. See the main agentprobe README for setup instructions.
+- Side panel tests require a Chrome profile with the extension already installed. See the main a-test README for setup instructions.
