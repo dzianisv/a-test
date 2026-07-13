@@ -8,7 +8,7 @@ from .actions import execute_action
 from .client import make_client
 from .prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_HOLO_APPENDIX
 from .judge import judge_result
-from .recording import assemble_gif, start_screen_recording, stop_screen_recording
+from .recording import assemble_gif, assemble_gif_from_video, start_screen_recording, stop_screen_recording
 
 
 def _extract_first_json_object(text: str) -> dict | None:
@@ -254,6 +254,8 @@ def run_case(
         ensure_app_foreground(pkg, verbose=verbose)
 
     rec_thread, rec_remote = start_screen_recording(case.name)
+    rec_local = str(Path(output_dir) / f"{case.name}.mp4")
+    rec_ok = False
     try:
         loop_result = run_cua_step(
             goal=case.instruction,
@@ -271,12 +273,15 @@ def run_case(
             grounding_fn=grounding_fn,
         )
     finally:
-        rec_local = str(Path(output_dir) / f"{case.name}.mp4")
-        stop_screen_recording(rec_thread, rec_remote, rec_local)
+        rec_ok = stop_screen_recording(rec_thread, rec_remote, rec_local)
 
     result = judge_result(case, loop_result, client, model)
 
-    gif = assemble_gif(output_dir)
+    gif = None
+    if rec_ok and Path(rec_local).exists() and Path(rec_local).stat().st_size > 0:
+        gif = assemble_gif_from_video(rec_local, output_dir)
+    if gif is None:
+        gif = assemble_gif(output_dir)
     result["gif"] = gif
 
     # Drop the base64 blob before persisting — it bloats result.json.

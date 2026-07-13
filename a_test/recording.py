@@ -184,3 +184,56 @@ def assemble_gif(output_dir: str):
     except Exception as exc:
         print(f"  [gif] assembly failed: {exc}")
     return None
+
+
+def assemble_gif_from_video(video_path: str, output_dir: str) -> str | None:
+    """Assemble demo.gif directly from a recorded MP4 using ffmpeg.
+
+    Applies the same two-pass palette approach as assemble_gif (palettegen +
+    paletteuse), but reads the real recorded video directly instead of
+    concatenating per-step screenshots, so the GIF reflects the actual
+    recorded run (including timing) instead of a static frame sequence.
+
+    Returns the path to demo.gif on success, or None if the video is
+    missing/empty or the ffmpeg conversion fails -- in which case the caller
+    should fall back to assemble_gif(output_dir).
+    """
+    video = Path(video_path)
+    if not video.exists() or video.stat().st_size == 0:
+        print(f"  [gif] recording missing or empty, falling back to screenshots: {video_path}")
+        return None
+
+    palette_path = Path(output_dir) / "video-palette.png"
+    gif_path = Path(output_dir) / "demo.gif"
+    # Cap width instead of always forcing it, so small recordings aren't upscaled.
+    scale_filter = "fps=10,scale='min(960,iw)':-2:flags=lanczos"
+
+    try:
+        palette_result = subprocess.run(
+            ["ffmpeg", "-y", "-i", str(video),
+             "-vf", f"{scale_filter},palettegen=max_colors=256:stats_mode=diff",
+             str(palette_path)],
+            capture_output=True, timeout=240,
+        )
+        if palette_result.returncode != 0:
+            stderr = palette_result.stderr.decode(errors="replace").strip()[-500:]
+            print(f"  [gif] palettegen failed for {video_path}: {stderr}")
+            return None
+
+        gif_result = subprocess.run(
+            ["ffmpeg", "-y", "-i", str(video),
+             "-i", str(palette_path),
+             "-lavfi", f"{scale_filter} [x]; [x][1:v] paletteuse=dither=bayer",
+             str(gif_path)],
+            capture_output=True, timeout=240,
+        )
+        if gif_result.returncode != 0:
+            stderr = gif_result.stderr.decode(errors="replace").strip()[-500:]
+            print(f"  [gif] paletteuse failed for {video_path}: {stderr}")
+            return None
+
+        if gif_path.exists():
+            return str(gif_path)
+    except Exception as exc:
+        print(f"  [gif] video-to-gif conversion failed: {exc}")
+    return None
