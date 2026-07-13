@@ -31,7 +31,7 @@ All 4 workflows must pass before merge:
 Each CUA job produces:
 - Screenshots (step-00.png, step-01-a1.png, ...)
 - GIF demo (demo.gif)
-- Video recording (recording.mp4 or basic_smoke.mp4)
+- Video recording (recording.mp4 or calculator_math.mp4)
 - Result JSON (result.json)
 
 ## Documentation Requirements

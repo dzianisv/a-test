@@ -27,7 +27,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: a-test run --target android --case examples/android/basic_smoke.py --output-dir /tmp/cua-output
+          script: a-test run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       - uses: actions/upload-artifact@v4

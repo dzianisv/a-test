@@ -309,7 +309,8 @@ examples/
   open-weather.yaml
   install-extension.yaml
   android/
-    basic_smoke.py         Example Python test case
+    calculator_math.py     Example Python test case (computes 27+18, verifies result is 45)
+    network_drop.py        Network drop/restore resilience test
     opencode_checks.py     Deterministic REST-API checks (pair with opencode-smoke.yaml)
     opencode-smoke.yaml    opencode Android app CUA smoke test
   vibebrowser/

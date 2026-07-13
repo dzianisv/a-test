@@ -2,8 +2,8 @@
 
 Written to run against the actual bench emulator image (android-30 AVD
 "ocx"), which does NOT have a calculator app (neither com.android.calculator2
-nor com.google.android.calculator) -- examples/android/calculator_math.py and
-basic_smoke.py cannot run on it. com.android.settings IS present and stable
+nor com.google.android.calculator) -- examples/android/calculator_math.py
+cannot run on it. com.android.settings IS present and stable
 across API levels, so this exercises real multi-step CUA (find the search
 affordance, type into it, read live results) without depending on an app
 that may not exist on a given image.
