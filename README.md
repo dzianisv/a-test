@@ -297,6 +297,34 @@ This makes demos much more educational — viewers see the agent's reasoning in 
 ![GitHub Actions CI workflow showing a successful run with all checks passing](docs/images/github-actions-ci-success.png)
 *Screenshot: a successful GitHub Actions CI run with all checks passing.*
 
+### Recommended: unified action (auto-detects environment)
+
+This is the recommended way to use a-test in CI — it auto-detects android/browser/desktop from the script path (`.ts` → desktop, path/filename containing `android` → android, otherwise → browser), so you don't need to pick a per-surface action yourself:
+
+```yaml
+jobs:
+  cua:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dzianisv/a-test/.github/actions/a-test@main
+        with:
+          script: examples/open-weather.yaml
+        env:
+          AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
+          AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cua-output
+          path: /tmp/a-test-output/
+```
+
+Set the `environment` input to `android`, `browser`, or `desktop` to bypass auto-detection when it doesn't infer what you want. As with the per-surface actions below, secrets always go in the calling job's `env:` block — this action has no input for any API key. See [docs/ci.md](docs/ci.md#unified-action-recommended) for the full input reference.
+
+The per-surface actions below (`a-test-android`, `a-test-browser`, `a-test-desktop`) remain fully supported — use them directly when you want to pin a workflow to a single surface explicitly. The unified action also accepts their surface-specific inputs (such as `api-level`, `apk-path`, and `hai-base-url`).
+
 ### Android — one-liner via reusable action
 
 ```yaml
