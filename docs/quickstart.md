@@ -2,11 +2,13 @@
 
 ## Install
 
+**Not yet published to PyPI** (see [README.md](../README.md#install) / [VERSIONING.md](VERSIONING.md) for why). Install from source, pinned to a commit SHA:
+
 ```bash
-pip install a-test
+pip install "git+https://github.com/dzianisv/a-test.git@<commit-sha>"
 ```
 
-Or from source:
+Or clone directly:
 
 ```bash
 git clone https://github.com/dzianisv/a-test

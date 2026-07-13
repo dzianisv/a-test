@@ -1,7 +1,7 @@
 # a-test Release Readiness Checklist
 
 ## PRD Requirements
-- [ ] Framework is easy to install and use (pip install a-test)
+- [ ] Framework is easy to install and use (pip install a-test — blocked until first tagged release; source install pinned to a commit SHA works today, see docs/VERSIONING.md)
 - [ ] README has quickstart for install and use (Android + Browser)
 - [ ] README has CI integration quickstart (GitHub Actions)
 - [ ] Reusable GitHub Action helpers created (a-test-android, a-test-browser)
@@ -18,7 +18,7 @@
 ## CI/Quality
 - [ ] All CI jobs pass: Lint, Browser CUA, Android CUA, CUA Chrome Extension
 - [ ] Browser CUA test (open-weather.yaml) — fetches real data, agent confirms visible
-- [ ] Android CUA test (basic_smoke.py) — launches real app, agent confirms UI visible
+- [ ] Android CUA test (calculator_math.py) — computes 27+18, agent verifies the result 45
 - [ ] Chrome Extension test — verifies Vibe extension is published on CWS
 - [ ] Webapp test (vibebrowser.app) — navigates live site, confirms loads
 
@@ -37,5 +37,6 @@
 - [ ] Run full test suite locally and in CI
 - [ ] Verify demo artifacts (GIFs/videos) are meaningful
 - [ ] Commit or upload demo artifacts to repo or release notes
+- [ ] Docs/actions/examples pin to a commit SHA, not `@main` (docs/VERSIONING.md) — see PR remediating install/reuse audit findings
 - [ ] Create and push a `vX.Y.Z` tag (the Publish to PyPI workflow publishes it automatically)
 - [ ] Configure PyPI Trusted Publishing for `dzianisv/a-test`, workflow `publish-pypi.yml`, environment `pypi`

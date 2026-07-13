@@ -168,9 +168,20 @@ reusable action in [docs/ci.md](docs/ci.md), which auto-detects `HAI_API_KEY` al
 
 ## Install
 
+**Not yet published to PyPI.** The `a-test` distribution name is reserved (verified
+free) and `.github/workflows/publish-pypi.yml` will publish it automatically the
+first time a `vX.Y.Z` tag is pushed — but no tag has been cut yet, so
+`pip install a-test` does not resolve to anything today. Until the first release,
+install directly from source, pinned to a commit SHA (never a branch name — see
+[docs/VERSIONING.md](docs/VERSIONING.md)):
+
 ```bash
-pip install a-test              # Python Android runner
+pip install "git+https://github.com/dzianisv/a-test.git@<commit-sha>"
 ```
+
+Find `<commit-sha>`: `git ls-remote https://github.com/dzianisv/a-test.git main`, or
+copy a commit SHA from the GitHub UI. Once a release ships, this section will change
+to the real `pip install a-test`.
 
 The browser backend is a Bun/TypeScript runner that lives in `browser/` and runs from
 a repo checkout — it is not shipped inside the pip package. For `--target browser`,
@@ -181,6 +192,15 @@ git clone https://github.com/dzianisv/a-test
 cd a-test
 pip install -e .
 cd browser && bun install
+```
+
+**Using the browser runner as a dependency (not a full clone):** the npm name
+`a-test-cua` (see `package.json`) is reserved but not yet published either. Until
+it is, add it as a pinned git dependency:
+
+```bash
+bun add github:dzianisv/a-test#<commit-sha>
+# or: npm install github:dzianisv/a-test#<commit-sha>
 ```
 
 ## Quickstart: Android
@@ -248,7 +268,7 @@ the final screenshot, assembles `demo.gif`, and writes `result.json`.
 Install Pillow to add text overlays showing the agent's reasoning at each step:
 
 ```bash
-pip install a-test[gif-captions]
+pip install "git+https://github.com/dzianisv/a-test.git@<commit-sha>#egg=a-test[gif-captions]"
 ```
 
 With Pillow installed, `demo.gif` will include text annotations:
@@ -286,7 +306,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: dzianisv/a-test/.github/actions/a-test-android@main
+      - uses: dzianisv/a-test/.github/actions/a-test-android@<pinned-commit-sha>  # pin to a commit SHA, not a branch — see docs/VERSIONING.md
         with:
           case: examples/android/basic_smoke.py
           api-level: '33'
@@ -311,7 +331,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: dzianisv/a-test/.github/actions/a-test-browser@main
+      - uses: dzianisv/a-test/.github/actions/a-test-browser@<pinned-commit-sha>  # pin to a commit SHA, not a branch — see docs/VERSIONING.md
         with:
           case: examples/open-weather.yaml
           output-dir: /tmp/cua-output
@@ -368,7 +388,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install a-test
+      - run: pip install -e .
       - run: sudo apt-get install -y ffmpeg
       - name: Enable KVM
         run: |
