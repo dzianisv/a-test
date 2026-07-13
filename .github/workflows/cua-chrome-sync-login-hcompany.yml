@@ -50,7 +50,7 @@ jobs:
           HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: chrome-sync-login-hcompany-output-${{ github.run_number }}

@@ -30,7 +30,7 @@ jobs:
           python -m venv /tmp/a-test-wheel
           /tmp/a-test-wheel/bin/python -m pip install dist/*.whl
           /tmp/a-test-wheel/bin/a-test --help
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: python-dist
           path: dist/
