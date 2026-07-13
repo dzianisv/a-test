@@ -8,8 +8,9 @@ or wait for, based on a natural-language test case.
 ## What's in this directory
 
 - `runner.ts` — the CUA runner itself.
-- `cases/` — currently **empty**. It's a placeholder for browser-specific
-  test case files; none exist yet.
+- `cases/` — exists but is currently **empty**, tracked only via a
+  `.gitkeep` placeholder. It's a placeholder for browser-specific test case
+  files; none exist yet.
 - `Dockerfile` — builds a headless, X11-backed Chrome environment for running
   the runner in CI or containers.
 - `setup-chrome-profile.sh` — standalone helper for preparing an unpacked

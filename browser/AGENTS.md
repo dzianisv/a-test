@@ -7,9 +7,10 @@ Read it before modifying `runner.ts`, `Dockerfile`, or `setup-chrome-profile.sh`
 
 `browser/` holds a Bun/TypeScript CUA (computer-use-agent) runner,
 `runner.ts`, that drives a real Chrome browser via CDP while a vision/LLM
-model decides what to click, type, or wait for. `cases/` is currently
-**empty** — it's a placeholder for future browser-specific case files. Real,
-working test cases live under `../examples/` (relative to `browser/`) as
+model decides what to click, type, or wait for. `cases/` exists but is
+**empty** (tracked only via a `.gitkeep` placeholder) — it's a placeholder
+for future browser-specific case files. Real, working test cases live under
+`../examples/` (relative to `browser/`) as
 `.yaml`, `.ts`, or `.py` files (e.g. `examples/open-weather.yaml`,
 `examples/install-extension.yaml`, `examples/vibebrowser/*.yaml`,
 `examples/dual-surface/*.ts`, `examples/browser/install_auth.py`).
@@ -68,7 +69,8 @@ rule that verification API errors force FAIL rather than silently passing.
 ## Where to add new test cases
 
 Real case files belong under `../examples/` (`.yaml`, `.ts`, or `.py`), not
-`browser/cases/` (which is an empty placeholder today). If you add a case
+`browser/cases/` (which is an empty placeholder directory today, tracked only
+via `.gitkeep`). If you add a case
 that reaches a state the CUA loop might mis-evaluate — which is essentially
 any non-trivial end-to-end flow — give it a `verification.prompt` so the
 post-loop guard described above actually runs against it.

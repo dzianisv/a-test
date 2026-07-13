@@ -46,7 +46,7 @@ Requires: `bun` in PATH (https://bun.sh), `xdotool`, `scrot`, `ffmpeg`, and an A
 ```bash
 export AZURE_CUA_API_KEY=...
 export AZURE_CUA_BASE_URL=https://<your-resource>.openai.azure.com/
-export AZURE_CUA_MODEL=gpt-5.4
+export CUA_MODEL=gpt-5.4
 
 a-test run \
   --target browser \

@@ -136,7 +136,8 @@ pytest tests/test_my_feature.py -v
 | `GEMINI_API_KEY` | Android runner only (Gemini) |
 | `XAI_API_KEY` | Android runner only (xAI/Grok) |
 | `AZURE_CUA_API_KEY` + `AZURE_CUA_BASE_URL` | Android + browser runners (Azure CUA endpoint, used in CI) |
-| `HAI_API_KEY` (+ optional `HAI_BASE_URL`, `HAI_MODEL`) | Both runners — enables Holo grounding for tap-target resolution; no-op if unset |
+| `HAI_API_KEY` | Android + browser runners — enables Holo grounding for tap-target resolution; no-op if unset |
+| `HAI_BASE_URL`, `HAI_MODEL` | Browser runner only (`browser/runner.ts`) — override the Holo endpoint/model; Android hardcodes both (`a_test/grounding.py`) and doesn't read these vars |
 | `CUA_MODEL` | Both runners — override the model name |
 | `CUA_TOOL_TYPE` | Browser runner only — override the Responses API tool type (`computer` vs `computer_use_preview`) |
 | `CHROME_PATH` | Browser runner only — override the Chrome binary path |
