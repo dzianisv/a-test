@@ -7,7 +7,7 @@ bench/report.py.
 
 Example:
     python -m bench.run \\
-        --cases examples/android/calculator_math.py,examples/android/basic_smoke.py \\
+        --cases examples/android/calculator_math.py,examples/android/network_drop.py \\
         --backends azure-gpt4o,gemini-flash \\
         --repeat 1 --output-dir /tmp/bench --dry-run
 """

@@ -8,6 +8,9 @@ inputs:
   api-level:
     description: 'Android emulator API level'
     default: '33'
+  profile:
+    description: 'Optional android-emulator-runner device profile (e.g. pixel_4). Leave empty to let reactivecircus/android-emulator-runner pick its own default.'
+    default: ''
   apk-path:
     description: 'Optional path to an APK to install before the test'
     default: ''
@@ -115,6 +118,7 @@ runs:
         # ${{ inputs.* }} interpolation here is safe.
         api-level: ${{ inputs.api-level }}
         arch: x86_64
+        profile: ${{ inputs.profile }}
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
         disable-animations: true
         script: |

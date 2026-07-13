@@ -1,0 +1,213 @@
+name: External Consumer Proof
+
+# This repo's own dogfooding workflows (android-cua.yml, browser-cua.yml)
+# reference the composite actions LOCALLY (`uses: ./.github/actions/a-test-*`)
+# and install the Python package from the checked-out source tree. Neither of
+# those exercises the two things an actual external consumer of this project
+# depends on:
+#   (a) `pip install <wheel>` -- a real, non-editable install of a built
+#       distribution, the way PyPI users get the package (once published).
+#   (b) `uses: dzianisv/a-test/.github/actions/a-test-*@<ref>` -- the
+#       composite actions' REMOTE code path (fetching this repo's source into
+#       a dedicated `_a-test` checkout), the way an external repo's own
+#       workflow would reference them.
+# The two jobs below prove each path independently.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'pyproject.toml'
+      - 'a_test/**'
+      - '.github/actions/**'
+      - '.github/workflows/external-consumer.yml'
+  pull_request:
+    paths:
+      - 'pyproject.toml'
+      - 'a_test/**'
+      - '.github/actions/**'
+      - '.github/workflows/external-consumer.yml'
+
+jobs:
+  wheel-install-proof:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build wheel
+        run: |
+          python -m pip install build
+          python -m build --wheel
+
+      - name: Create install venv OUTSIDE the repo checkout
+        run: python -m venv ${{ runner.temp }}/venv
+
+      - name: Install wheel non-editably (from the built .whl file, not -e)
+        run: |
+          WHEEL="$(ls "${{ github.workspace }}"/dist/*.whl)"
+          echo "Installing: $WHEEL"
+          "${{ runner.temp }}/venv/bin/pip" install "$WHEEL"
+
+      - name: Assert import resolves to the venv install, not the checkout
+        # CRITICAL: this step (and every step below that imports a_test) MUST
+        # run with working-directory OUTSIDE $GITHUB_WORKSPACE. Python
+        # implicitly prepends the current working directory to sys.path, so
+        # running this from the repo checkout would silently import the
+        # local a_test/ source tree -- shadowing the installed wheel and
+        # false-passing this proof even if the wheel install were completely
+        # broken. Running from ${{ runner.temp }} (a directory containing no
+        # a_test/ package) is what makes this a real assertion. Do NOT add
+        # sys.path.insert(...) pointing at the workspace anywhere here --
+        # that would silently recreate the same bug.
+        working-directory: ${{ runner.temp }}
+        env:
+          VENV_DIR: ${{ runner.temp }}/venv
+          REPO_CHECKOUT_DIR: ${{ github.workspace }}
+        run: |
+          "${{ runner.temp }}/venv/bin/python" - <<'PY'
+          import os
+          import a_test
+
+          resolved = os.path.realpath(a_test.__file__)
+          venv_dir = os.path.realpath(os.environ["VENV_DIR"])
+          checkout_dir = os.path.realpath(os.environ["REPO_CHECKOUT_DIR"])
+
+          print(f"a_test.__file__ = {resolved}")
+          assert resolved.startswith(venv_dir), (
+              f"a_test resolved outside the venv ({resolved}); expected under {venv_dir}"
+          )
+          assert not resolved.startswith(checkout_dir), (
+              f"a_test resolved under the repo checkout ({resolved}) -- this is the "
+              "cwd-shadowing bug: the installed wheel is not actually being exercised."
+          )
+          print("OK: a_test imported from the venv install, not the checkout.")
+          PY
+
+      - name: Verify console-script entry point (a-test --help)
+        working-directory: ${{ runner.temp }}
+        run: "${{ runner.temp }}/venv/bin/a-test --help"
+
+      - name: Real case-parsing proof (parses an actual example case file)
+        # examples/open-weather.yaml is referenced here only as a data file
+        # path (a plain string argument to the installed CLI's internal
+        # loader) -- not as Python code being imported, so this does NOT
+        # reintroduce the cwd-shadowing bug above.
+        working-directory: ${{ runner.temp }}
+        env:
+          EXAMPLE_CASE_PATH: ${{ github.workspace }}/examples/open-weather.yaml
+        run: |
+          "${{ runner.temp }}/venv/bin/python" - <<'PY'
+          import os
+          from a_test.cli import _load_case
+
+          case_path = os.environ["EXAMPLE_CASE_PATH"]
+          case = _load_case(case_path, None)
+
+          assert case.name == "open-weather", f"unexpected case name: {case.name!r}"
+          assert case.instruction, "case.instruction/goal is empty"
+          assert case.successCriteria, "case.successCriteria is empty"
+          assert case.url == "https://wttr.in/New+York", f"unexpected url: {case.url!r}"
+
+          print(
+              f"Parsed real case file: name={case.name!r} maxSteps={case.maxSteps} "
+              f"successCriteria={len(case.successCriteria)} items"
+          )
+          PY
+
+  remote-composite-action-proof:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 20
+    # SKIPPED on pull_request: `uses: dzianisv/a-test/...@main` always
+    # resolves against the CURRENT default branch, never against this PR's
+    # own (unmerged) commits -- there is no `uses:` syntax that can pin to
+    # "whatever ref this workflow run's own head commit is" (see the
+    # "WHY `@main`" note below for the actionlint/GitHub-docs citations
+    # proving `uses:` accepts no expression context at all). Running this
+    # job on `pull_request` would therefore ALWAYS test main's current state
+    # regardless of the PR's diff -- a false, PR-diff-independent signal
+    # that would either always pass or always fail without the PR's changes
+    # ever being the cause. Restricting it to `push` (post-merge, so `@main`
+    # now genuinely includes what was just merged) and `workflow_dispatch`
+    # (manual, on-demand) keeps it a real regression sentinel instead of a
+    # misleading required check on every unrelated PR.
+    if: github.event_name != 'pull_request'
+    steps:
+      # No checkout of this repo is needed for the action call itself -- the
+      # composite action does its own remote checkout of dzianisv/a-test
+      # into ./_a-test (see the "Resolve a-test source" step in
+      # a-test-browser/action.yml). $GITHUB_WORKSPACE still exists as an
+      # empty directory even without a checkout step here, which is where
+      # that nested checkout lands.
+      #
+      # WHAT THIS JOB PROVES: that referencing the composite action REMOTELY
+      # (`uses: dzianisv/a-test/.github/actions/a-test-browser@<ref>`, the
+      # way an external consumer would, as opposed to the LOCAL
+      # `uses: ./.github/actions/a-test-browser` used by this repo's own
+      # browser-cua.yml) really fetches this action + Python + browser
+      # runner source over the network, installs them, and gets far enough
+      # to attempt a real CUA run.
+      #
+      # WHY `@main` AND NOT `@${{ github.sha }}`: GitHub Actions does not
+      # evaluate ANY expression/context in the `uses:` key -- confirmed by
+      # actionlint ("context "github" is not allowed here. no context is
+      # available here.") and by the absence of a `jobs.<job_id>.steps.uses`
+      # row in GitHub's own context-availability table
+      # (https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability).
+      # `uses:` must be a static, literal string resolved at workflow-parse
+      # time, so this job cannot dynamically pin itself to the exact commit
+      # that triggered the run. It instead pins to `main`, matching how a
+      # real external consumer would reference the published action per
+      # docs/ci.md (pin to a specific commit SHA once one exists downstream;
+      # `main` here is the closest stable literal this in-repo proof
+      # workflow can use so it keeps working after this branch merges and is
+      # deleted). PRACTICAL IMPLICATION: until this branch is merged to
+      # `main`, this job exercises `main`'s current composite action code,
+      # not this PR's changes -- it becomes an accurate proof of THIS PR's
+      # fix once merged, and continues to prove the remote-reference path
+      # keeps working on every subsequent change to `main`.
+      #
+      # LIMITATION: composite action steps do not support per-step
+      # `continue-on-error`, so the whole action invocation below is one
+      # atomic step from this workflow's point of view. The resolution,
+      # remote checkout, `pip install`, and `bun install` steps inside it
+      # need no secrets and always run for real; only the very last internal
+      # step (the actual CUA loop) needs AZURE_CUA_API_KEY/AZURE_CUA_BASE_URL,
+      # which may not be configured (e.g. on a fork PR). `continue-on-error`
+      # is therefore applied to this whole step so a missing secret doesn't
+      # fail the job -- and the FOLLOWING step independently asserts, with NO
+      # continue-on-error, that the resolution/checkout/install stages that
+      # don't need secrets actually left real evidence of success on disk.
+      - name: Run a-test Browser CUA via the REMOTE composite action reference
+        continue-on-error: true
+        uses: dzianisv/a-test/.github/actions/a-test-browser@main
+        with:
+          case: examples/open-weather.yaml
+          output-dir: ${{ runner.temp }}/external-consumer-output
+        env:
+          AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
+          AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
+
+      - name: Assert resolution/checkout/install steps really succeeded (independent of secrets, NOT gated by continue-on-error)
+        run: |
+          test -d "${{ github.workspace }}/_a-test/browser" || {
+            echo "::error::_a-test/browser checkout is missing -- the composite action's remote checkout step failed."
+            exit 1
+          }
+          test -d "${{ github.workspace }}/_a-test/browser/node_modules" || {
+            echo "::error::browser/node_modules is missing -- the composite action's 'bun install' step failed."
+            exit 1
+          }
+          python3 -c "import a_test; print('a_test importable from:', a_test.__file__)" || {
+            echo "::error::'import a_test' failed -- the composite action's 'pip install' step failed."
+            exit 1
+          }
+          echo "Resolution/checkout/pip-install/bun-install steps of the remote composite action all succeeded for real."

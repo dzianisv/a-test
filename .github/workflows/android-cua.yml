@@ -7,21 +7,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+
+      - uses: ./.github/actions/a-test-android
         with:
-          python-version: "3.11"
-      - run: pip install -e .
-      - name: Install ffmpeg
-        run: sudo apt-get install -y ffmpeg
-      - name: Enable KVM
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 28
-          arch: x86_64
+          case: examples/android/calculator_math.py
+          output-dir: /tmp/cua-output
+          api-level: '28'
           # Explicit device profile: without this, avdmanager falls back to a
           # tiny implicit default screen (320x640px). On that screen the
           # calculator's digit buttons are only ~80px wide, so the CUA
@@ -36,18 +27,15 @@ jobs:
           # touch targets while staying close to the density/aspect ratio the
           # legacy calculator app actually renders correctly.
           profile: pixel_4
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          disable-animations: true
-          script: a-test run --target android --case examples/android/calculator_math.py --output-dir /tmp/cua-output
         env:
           AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
           AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
-          AZURE_CUA_MODEL: gpt-5.4
           # Enables Holo grounding (a_test/grounding.py) so tap targets are
           # resolved from the live screenshot instead of the planner LLM
           # guessing raw pixel coordinates -- fixes flaky adjacent-button
           # mis-taps (e.g. tapping "3" instead of "2"). No-op if unset.
           HAI_API_KEY: ${{ secrets.HAI_API_KEY }}
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
