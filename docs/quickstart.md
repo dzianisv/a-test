@@ -56,9 +56,10 @@ a-test run \
 open /tmp/a-test-output/demo.gif
 ```
 
-Instead of `AZURE_CUA_*`, you can also authenticate with `AZURE_OPENAI_API_KEY`
-(+ `AZURE_OPENAI_ENDPOINT`/`AZURE_OPENAI_BASE_URL`) or plain `OPENAI_API_KEY`
-(+ optional `OPENAI_BASE_URL`).
+Instead of `AZURE_CUA_*`, the browser runner also accepts `AZURE_DEV_AI_API_KEY`
+(+ `AZURE_DEV_AI_BASE_URL`) or plain `OPENAI_API_KEY` (+ optional
+`OPENAI_BASE_URL`). `AZURE_OPENAI_API_KEY`/`AZURE_OPENAI_ENDPOINT` are **not**
+supported here — those are read by the Android runner (`a_test/client.py`) only.
 
 ### Testing a Chrome extension
 
