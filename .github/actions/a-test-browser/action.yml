@@ -18,16 +18,69 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install a-test
+    - name: Resolve a-test source (local vs. remote invocation)
+      id: source
       shell: bash
-      run: pip install a-test
+      env:
+        # github.action_repository / github.action_ref are ONLY populated
+        # when this action is referenced remotely, e.g.
+        # `uses: dzianisv/a-test/.github/actions/a-test-browser@v1`
+        # from a downstream consumer's own workflow (GitHub Actions docs:
+        # "the owner and repository name of the action" / "the ref of the
+        # action being executed"). For a LOCAL reference
+        # (`uses: ./.github/actions/a-test-browser`, used by this repo's
+        # own cua-*.yml workflows), there is no separate action repo to name,
+        # so both are empty strings. Per GitHub's own guidance ("Do not use
+        # [action_ref/action_repository] in the run keyword. To make this
+        # context work with composite actions, reference it within the env
+        # context..."), they are captured here via `env:` rather than
+        # interpolated directly into a `run:` script body.
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [ -n "$ACTION_REPOSITORY" ]; then
+          # Remote consumer: this action's own code was fetched from
+          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching browser
+          # runner + Python package source from that SAME repo+ref into a
+          # dedicated _a-test checkout -- keeping everything pinned in
+          # lockstep with whatever version of this action the consumer
+          # chose, instead of silently drifting to dzianisv/a-test's default
+          # branch regardless of pinning.
+          echo "mode=remote" >> "$GITHUB_OUTPUT"
+          echo "py-dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
+          echo "browser-dir=${GITHUB_WORKSPACE}/_a-test/browser" >> "$GITHUB_OUTPUT"
+        else
+          # Local invocation: the calling workflow's own `actions/checkout`
+          # step already placed the exact revision under test (this IS the
+          # a-test repo -- a_test/pyproject.toml/browser/ all live at the
+          # workspace root) -- reuse it directly instead of re-fetching a
+          # second, potentially-stale copy of the remote default branch.
+          echo "mode=local" >> "$GITHUB_OUTPUT"
+          echo "py-dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+          echo "browser-dir=${GITHUB_WORKSPACE}/browser" >> "$GITHUB_OUTPUT"
+        fi
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
 
-    - name: Checkout a-test browser runner
+    - name: Checkout a-test browser runner (remote consumers only)
+      if: steps.source.outputs.mode == 'remote'
       uses: actions/checkout@v4
       with:
-        repository: dzianisv/a-test
+        repository: ${{ steps.source.outputs.repository }}
+        ref: ${{ steps.source.outputs.ref }}
         path: _a-test
-        sparse-checkout: browser
+        sparse-checkout: |
+          browser
+          a_test
+          pyproject.toml
+          README.md
+          LICENSE
+
+    - name: Install a-test
+      shell: bash
+      env:
+        A_TEST_PY_DIR: ${{ steps.source.outputs.py-dir }}
+      run: pip install "$A_TEST_PY_DIR"
 
     - name: Install bun
       uses: oven-sh/setup-bun@v2
@@ -36,7 +89,9 @@ runs:
 
     - name: Install browser runner deps
       shell: bash
-      run: cd _a-test/browser && bun install
+      env:
+        A_TEST_BROWSER_DIR: ${{ steps.source.outputs.browser-dir }}
+      run: cd "$A_TEST_BROWSER_DIR" && bun install
 
     - name: Install system deps
       shell: bash
@@ -54,7 +109,7 @@ runs:
     - name: Run CUA test in Chrome
       shell: bash
       env:
-        A_TEST_BROWSER_DIR: ${{ github.action_path }}/../../_a-test/browser
+        A_TEST_BROWSER_DIR: ${{ steps.source.outputs.browser-dir }}
         CUA_MODEL: ${{ inputs.model }}
         DISPLAY: ':99'
       run: |

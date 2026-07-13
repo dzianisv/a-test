@@ -5,6 +5,13 @@
 The easiest way to add a-test to any GitHub Actions workflow is via the
 reusable composite actions in this repo.
 
+Pin `uses:` to a commit SHA, not a branch (e.g. `@main`) — a branch pin can
+silently change under you if the action's implementation changes later. The
+examples below use `@main` for readability only; replace it with a real
+commit SHA once one exists in `dzianisv/a-test`. See
+[External Consumer Proof](#external-consumer-proof-ci) below for the CI job
+that exercises exactly this remote-reference path on every relevant change.
+
 ### Android
 
 ```yaml
@@ -12,14 +19,17 @@ reusable composite actions in this repo.
   with:
     case: path/to/my-test.yaml
     api-level: '33'
-    apk-path: path/to/app.apk   # optional
+    profile: pixel_4              # optional emulator device profile
+    apk-path: path/to/app.apk     # optional
     output-dir: /tmp/cua-output
   env:
     AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
     AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
 ```
 
-The action handles: `pip install a-test`, `ffmpeg`, KVM device, and the emulator runner.
+The action handles: installing `a-test` (see
+[Local vs. remote install resolution](#local-vs-remote-install-resolution)
+below), `ffmpeg`, KVM device, and the emulator runner.
 
 ### Browser
 
@@ -33,7 +43,10 @@ The action handles: `pip install a-test`, `ffmpeg`, KVM device, and the emulator
     AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
 ```
 
-The action handles: `pip install a-test`, bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and Xvfb startup.
+The action handles: installing `a-test` (see
+[Local vs. remote install resolution](#local-vs-remote-install-resolution)
+below), bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and
+Xvfb startup.
 
 ### Desktop (Terminal + Browser)
 
@@ -68,21 +81,60 @@ The action handles: `pip install a-test`, bun, browser runner deps, `xvfb`, `xdo
     # HAI_BASE_URL optional — defaults to https://api.hcompany.ai/v1/
 ```
 
-The action handles: `pip install a-test`, bun, a sparse checkout of `core`,
-`surfaces`, and `examples/dual-surface`, `xvfb`, `xdotool`, `scrot`, `ffmpeg`,
-`xterm`, `bsdutils` (for the `script` command used by `chrome-sync-login.ts`),
-and Xvfb startup. The vision-judge backend is auto-detected at runtime by the
-script itself, in priority order: `AZURE_CUA_API_KEY` (+ `AZURE_CUA_BASE_URL`),
+The action handles: bun, a sparse checkout of `core`, `surfaces`, and
+`examples/dual-surface` (remote invocations only — see
+[Local vs. remote install resolution](#local-vs-remote-install-resolution)),
+`xvfb`, `xdotool`, `scrot`, `ffmpeg`, `xterm`, `bsdutils` (for the `script`
+command used by `chrome-sync-login.ts`), and Xvfb startup. This action has no
+Python dependency at all — the dual-surface runner is 100% Bun/TypeScript. The
+vision-judge backend is auto-detected at runtime by the script itself, in
+priority order: `AZURE_CUA_API_KEY` (+ `AZURE_CUA_BASE_URL`),
 then `OPENAI_API_KEY` (+ `OPENAI_BASE_URL`), then `HAI_API_KEY` (+ optional
 `HAI_BASE_URL`) — the action has no `input` for any API key, only the `case`,
 `output-dir`, `model`, and `hai-base-url` inputs shown above.
+
+## Local vs. remote install resolution
+
+The `a-test-android` and `a-test-browser` actions install the `a_test` Python
+package **non-editably** (`pip install <resolved-dir>`, never `pip install
+a-test` — the package is not yet published to PyPI, and never `-e`) from one
+of two places, auto-detected via a "Resolve … source" step in each
+`action.yml`:
+
+- **Local invocation** (`uses: ./.github/actions/a-test-android` from a
+  workflow in this repo, e.g. `android-cua.yml`/`browser-cua.yml`): the
+  calling workflow's own `actions/checkout` step already placed the exact
+  revision under test at `$GITHUB_WORKSPACE` — the action reuses it directly
+  rather than re-fetching a second, potentially different copy.
+- **Remote invocation** (`uses: dzianisv/a-test/.github/actions/a-test-android@<ref>`
+  from an external consumer's own workflow, no local checkout of this repo
+  exists): the action fetches `dzianisv/a-test` at the `github.action_ref`
+  the consumer pinned (sparse-checked-out into `./_a-test`) and installs from
+  there, keeping the installed package version in lockstep with whichever
+  ref the consumer chose.
+
+This detection reads `github.action_repository`/`github.action_ref` via an
+`env:` block rather than interpolating them directly into a `run:` script
+body, per GitHub's own guidance for composite actions. `android-cua.yml` and
+`browser-cua.yml` in this repo call the actions locally — this is the
+"dogfooding" proof that the local branch works; see
+[External Consumer Proof CI](#external-consumer-proof-ci) below for the CI job
+that proves the remote branch and a real (non-editable, wheel-based) PyPI-style
+install both work too.
+
+The `a-test-desktop` action has no Python dependency (the dual-surface runner
+is 100% Bun/TypeScript) but uses the identical local/remote resolution
+pattern for the `core`/`surfaces`/`examples/dual-surface` checkout.
 
 ## Android emulator (manual)
 
 Uses `reactivecircus/android-emulator-runner@v2` on `ubuntu-latest`.
 
 Key setup steps:
-1. `pip install a-test` + `sudo apt-get install -y ffmpeg`
+1. `pip install -e .` (from a checkout of this repo — see
+   [Local vs. remote install resolution](#local-vs-remote-install-resolution)
+   for how the reusable `a-test-android` action installs the package instead)
+   + `sudo apt-get install -y ffmpeg`
 2. Enable KVM (required for hardware acceleration):
    ```yaml
    - name: Enable KVM
@@ -101,10 +153,40 @@ Required secrets: `AZURE_CUA_API_KEY`, `AZURE_CUA_BASE_URL`.
 Runs on `ubuntu-latest` with `Xvfb` for a virtual display.
 
 Key setup steps:
-1. `pip install a-test`, install bun via `oven-sh/setup-bun@v2`
+1. `pip install -e .` (from a checkout of this repo — see
+   [Local vs. remote install resolution](#local-vs-remote-install-resolution)
+   for how the reusable `a-test-browser` action installs the package instead),
+   install bun via `oven-sh/setup-bun@v2`
 2. `cd browser && bun install`
 3. `sudo apt-get install -y xvfb xdotool scrot ffmpeg`
 4. Start Xvfb and export `DISPLAY=:99`
+
+## External Consumer Proof CI
+
+[`external-consumer.yml`](../.github/workflows/external-consumer.yml) is CI
+proof that the two install/reuse paths documented above actually work, not
+just in theory:
+
+- **`wheel-install-proof`** builds a real wheel (`python -m build --wheel`),
+  installs it non-editably into a venv created *outside* the repo checkout,
+  and asserts (from a working directory outside the checkout, to rule out
+  Python's cwd-shadowing behavior silently importing the local source tree
+  instead of the installed wheel) that `import a_test`, the `a-test` console
+  script, and real case-file parsing (`a_test.cli._load_case` against
+  `examples/open-weather.yaml`) all work against the installed distribution —
+  the same thing a PyPI user would get once this package is published.
+- **`remote-composite-action-proof`** calls
+  `uses: dzianisv/a-test/.github/actions/a-test-browser@main` — the same
+  remote-reference form an external consumer would use — proving the
+  resolution/checkout/install steps described above succeed for real over the
+  network. See the comments in the workflow for why it can't pin to the exact
+  triggering commit (`uses:` never evaluates expressions/contexts in GitHub
+  Actions) and how the final CUA-run step is allowed to fail gracefully when
+  `AZURE_CUA_API_KEY`/`AZURE_CUA_BASE_URL` aren't configured, without masking
+  a real failure in the earlier install steps.
+
+It runs on `workflow_dispatch` and on `pull_request` scoped to `pyproject.toml`,
+`a_test/**`, `.github/actions/**`, and its own workflow file.
 
 ## Uploading artifacts
 
