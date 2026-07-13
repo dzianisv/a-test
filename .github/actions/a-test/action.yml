@@ -88,9 +88,84 @@ runs:
         fi
         echo "environment=$RESOLVED" >> "$GITHUB_OUTPUT"
 
-    - name: Install a-test
+    - name: Resolve runner source (local vs. remote invocation)
+      id: source
       shell: bash
-      run: pip install a-test
+      env:
+        # github.action_repository / github.action_ref are ONLY populated
+        # when this action is referenced remotely, e.g.
+        # `uses: dzianisv/a-test/.github/actions/a-test@v1` from a downstream
+        # consumer's own workflow. For a LOCAL reference
+        # (`uses: ./.github/actions/a-test`, used by this repo's own
+        # cua-*.yml workflows), there is no separate action repo to name, so
+        # both are empty strings. Per GitHub's own guidance, they are
+        # captured here via `env:` rather than interpolated directly into a
+        # `run:` script body.
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [ -n "$ACTION_REPOSITORY" ]; then
+          # Remote consumer: this action's own code was fetched from
+          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching runner
+          # (Python CLI + browser + core+surfaces+examples) from that SAME
+          # repo+ref into a dedicated _a-test checkout — keeping the runner
+          # pinned in lockstep with whatever version of this action the
+          # consumer chose.
+          echo "mode=remote" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
+        else
+          # Local invocation: the calling workflow's own `actions/checkout`
+          # step already placed the exact revision under test (this IS the
+          # a-test repo — pyproject.toml/a_test/browser/core/surfaces/examples
+          # live at the workspace root) — reuse it directly instead of
+          # re-fetching a second, potentially-stale copy of the remote
+          # default branch.
+          echo "mode=local" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+        fi
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout runner (remote consumers only)
+      if: steps.source.outputs.mode == 'remote'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ steps.source.outputs.repository }}
+        ref: ${{ steps.source.outputs.ref }}
+        path: _a-test
+        # Union of what every environment needs: the Python CLI package
+        # (pyproject.toml + a_test/, for android/browser), the browser
+        # runner (browser), and the desktop runner (core/surfaces/examples/
+        # dual-surface plus the bun project files) — always fetched together
+        # regardless of which environment actually triggered this step,
+        # since the extra sparse-checkout paths are cheap and this keeps the
+        # action simple with a single checkout step.
+        sparse-checkout: |
+          a_test
+          pyproject.toml
+          browser
+          core
+          surfaces
+          examples/dual-surface
+          package.json
+          bun.lock
+          tsconfig.json
+
+    - name: Install a-test
+      # Desktop (dual-surface) scripts are pure bun/TypeScript and never
+      # invoke the a-test Python CLI (see the "Run CUA test (desktop)" step
+      # below, which calls `bun run` directly) — so this step is skipped for
+      # desktop. For android/browser, the CLI IS required, and it is
+      # installed editable from the resolved runner source (local checkout
+      # or the remote-mode _a-test checkout above) rather than `pip install
+      # a-test`: the a-test PyPI package is not (yet) published for every
+      # revision this action might be pinned to, so relying on it would make
+      # this step fail identically to the bug this comment replaces.
+      if: steps.detect.outputs.environment == 'android' || steps.detect.outputs.environment == 'browser'
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: pip install -e "$A_TEST_DIR"
 
     # --- android-only steps ---
 
@@ -132,65 +207,8 @@ runs:
           a-test run --target android --case "$SCRIPT_INPUT" --output-dir "$OUTPUT_DIR_INPUT"
 
     # --- shared browser/desktop steps ---
-
-    - name: Resolve runner source (local vs. remote invocation)
-      id: source
-      if: steps.detect.outputs.environment == 'browser' || steps.detect.outputs.environment == 'desktop'
-      shell: bash
-      env:
-        # github.action_repository / github.action_ref are ONLY populated
-        # when this action is referenced remotely, e.g.
-        # `uses: dzianisv/a-test/.github/actions/a-test@v1` from a downstream
-        # consumer's own workflow. For a LOCAL reference
-        # (`uses: ./.github/actions/a-test`, used by this repo's own
-        # cua-*.yml workflows), there is no separate action repo to name, so
-        # both are empty strings. Per GitHub's own guidance, they are
-        # captured here via `env:` rather than interpolated directly into a
-        # `run:` script body.
-        ACTION_REPOSITORY: ${{ github.action_repository }}
-        ACTION_REF: ${{ github.action_ref }}
-      run: |
-        if [ -n "$ACTION_REPOSITORY" ]; then
-          # Remote consumer: this action's own code was fetched from
-          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching runner
-          # (browser / core+surfaces+examples) from that SAME repo+ref into a
-          # dedicated _a-test checkout — keeping the runner pinned in
-          # lockstep with whatever version of this action the consumer chose.
-          echo "mode=remote" >> "$GITHUB_OUTPUT"
-          echo "dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
-        else
-          # Local invocation: the calling workflow's own `actions/checkout`
-          # step already placed the exact revision under test (this IS the
-          # a-test repo — browser/core/surfaces/examples live at the
-          # workspace root) — reuse it directly instead of re-fetching a
-          # second, potentially-stale copy of the remote default branch.
-          echo "mode=local" >> "$GITHUB_OUTPUT"
-          echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
-        fi
-        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
-        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
-
-    - name: Checkout runner (remote consumers only)
-      if: (steps.detect.outputs.environment == 'browser' || steps.detect.outputs.environment == 'desktop') && steps.source.outputs.mode == 'remote'
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ steps.source.outputs.repository }}
-        ref: ${{ steps.source.outputs.ref }}
-        path: _a-test
-        # Union of what the browser runner needs (browser) and what the
-        # desktop runner needs (core/surfaces/examples/dual-surface plus the
-        # bun project files) — always fetched together regardless of which
-        # of the two environments actually triggered this step, since the
-        # extra sparse-checkout paths are cheap and this keeps the action
-        # simple with a single checkout step.
-        sparse-checkout: |
-          browser
-          core
-          surfaces
-          examples/dual-surface
-          package.json
-          bun.lock
-          tsconfig.json
+    # (runner source is already resolved/checked out above, shared with the
+    # android-only "Install a-test" step)
 
     - name: Install bun
       if: steps.detect.outputs.environment == 'browser' || steps.detect.outputs.environment == 'desktop'
@@ -247,6 +265,19 @@ runs:
       if: steps.detect.outputs.environment == 'browser'
       shell: bash
       env:
+        # No `cd` in this step — cwd stays at its default, $GITHUB_WORKSPACE.
+        # --case/--script is the CALLER's own test case path (e.g.
+        # examples/open-weather.yaml for this repo's own local workflows, or
+        # a downstream consumer's own file for a remote invocation) and must
+        # resolve relative to $GITHUB_WORKSPACE. In local mode that's the
+        # same directory as the resolved runner source, but in remote mode
+        # $GITHUB_WORKSPACE is the CONSUMER's own checked-out repo, while the
+        # resolved runner source lives in a separate ./_a-test checkout —
+        # cd-ing into the latter would break the consumer's own relative
+        # --case path. a_test/cli.py's _find_browser_runner() reads
+        # A_TEST_BROWSER_DIR directly (as an absolute-path override) to
+        # locate browser/runner.ts regardless of cwd, so that's still set
+        # from the resolved source dir.
         A_TEST_BROWSER_DIR: ${{ steps.source.outputs.dir }}/browser
         CUA_MODEL: ${{ inputs.model }}
         DISPLAY: ':99'
@@ -254,7 +285,6 @@ runs:
         OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
         URL_INPUT: ${{ inputs.url }}
       run: |
-        cd "$A_TEST_BROWSER_DIR"
         # Build the argument list as a bash array (rather than a naive
         # string-concatenated flag) so an optional --url value can't cause
         # word-splitting or injection when expanded below, and so the

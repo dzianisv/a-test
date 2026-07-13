@@ -25,10 +25,13 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install a-test
-      shell: bash
-      run: pip install a-test
-
+    # No Python CLI install step here: dual-surface `.ts` scripts are pure
+    # bun/TypeScript (see the "Run CUA test (terminal + browser)" step below,
+    # which invokes `bun run` directly) and never shell out to the a-test
+    # Python package — installing it here was dead weight, and it also used
+    # to unconditionally `pip install a-test` from PyPI, which fails outright
+    # ("No matching distribution found for a-test") since that package has
+    # never been published there.
     - name: Resolve dual-surface runner source (local vs. remote invocation)
       id: source
       shell: bash
