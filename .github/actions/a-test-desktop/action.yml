@@ -25,10 +25,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install a-test
-      shell: bash
-      run: pip install a-test
-
     - name: Resolve dual-surface runner source (local vs. remote invocation)
       id: source
       shell: bash
