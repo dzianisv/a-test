@@ -1,0 +1,8 @@
+- [2026-07-12T18:17:32-07:00] Created GitHub issue #5 after no matching issue was found.
+- [2026-07-12T18:17:32-07:00] Mapped current flow: OpenCode Mobile records MP4 files and uploads them from `cua-smoke.yml`; a-test README links `docs-site/demo.mp4`.
+- [2026-07-12T18:20:00-07:00] Downloaded current `cua-android-output-demo-4` artifact from green run 29215549469. `demo.gif` is 0.04s, one frame, while the recording exists as `opencode-smoke.mp4`.
+- [2026-07-12T18:20:00-07:00] Downloaded the provenance OpenCode Mobile `docs-site/demo.mp4` (31.0s, H.264, 320x640, 4fps). Two-pass ffmpeg palette conversion produced a 31.0s, 395 KiB GIF whose sampled frames show telemetry dismissal, connection setup, and loaded sessions.
+- [2026-07-12T18:23:00-07:00] User approved the balanced plan.
+- [2026-07-12T18:38:00-07:00] Integrated `docs(showcase): add OpenCode CUA GIF demo` and `fix(recording): build Android GIFs from MP4 recordings` into isolated task branch.
+- [2026-07-12T18:41:00-07:00] Independent review passed. Real MP4 validation produced a GIF at 10fps with 310 frames over 31.0 seconds; missing-video conversion returned `None`, allowing screenshot fallback.
+- [2026-07-12T18:42:00-07:00] Full existing Python suite passed: `pytest tests/` reported 34 passed.

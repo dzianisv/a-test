@@ -1,0 +1,14 @@
+# Task 5 — STATE
+- phase: 5c-pass
+- issue: #5 https://github.com/dzianisv/a-test/issues/5
+- started: 2026-07-12T18:17:32-07:00
+- supervisor: GitHub Copilot
+- success-metric: Open the a-test README on GitHub after the change is merged and observe an animated OpenCode GIF showing multi-step agent interaction, with MP4 retained only as the full-recording link.
+- current-evidence: `a_test/loop.py` records `opencode-smoke.mp4` but `assemble_gif()` only joins `step-*.png`. The latest OpenCode artifact's GIF is a 0.04-second single frame; converting the linked 31-second OpenCode MP4 produces a 31-second GIF.
+- phase-2: Defined task as a recording-to-GIF defect, not a workflow-upload defect.
+- phase-3: Designed MP4-first conversion with screenshot assembly fallback.
+- phase-4: Plan and real-artifact validation written; awaiting user approval.
+- approval: 2026-07-12T18:23:00-07:00 (user selected go)
+- implementation: MP4-first Android GIF assembly committed as `fe61404`.
+- review: pass — independent review found no significant issues.
+- real-test: pass — public OpenCode 31-second MP4 converted to a 31-second, 310-frame GIF.

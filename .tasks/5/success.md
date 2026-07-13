@@ -1,0 +1,1 @@
+Task is done when **`open https://github.com/dzianisv/a-test#opencode-mobile-android-onboarding--real-coding-task`** produces **`an animated OpenCode GIF visibly showing connection setup and loaded sessions, while the MP4 remains only a full-recording link`** in **the public GitHub README**.
