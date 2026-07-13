@@ -69,10 +69,15 @@ runs:
         # the SAME repo+ref this action itself was invoked from, so a remote
         # consumer always gets the browser runner matching their pinned
         # version instead of silently drifting to dzianisv/a-test's
-        # unpinned default branch.
+        # unpinned default branch. README.md is included alongside
+        # pyproject.toml because pyproject.toml declares
+        # `readme = "README.md"` (PEP 621 static readme reference), which
+        # keeps the setuptools build backend's metadata resolution robust
+        # for this sparse checkout.
         sparse-checkout: |
           a_test
           pyproject.toml
+          README.md
           browser
 
     - name: Install a-test
@@ -94,8 +99,8 @@ runs:
     - name: Install browser runner deps
       shell: bash
       env:
-        A_TEST_DIR: ${{ steps.source.outputs.dir }}
-      run: cd "$A_TEST_DIR/browser" && bun install
+        A_TEST_BROWSER_DIR: ${{ steps.source.outputs.dir }}/browser
+      run: cd "$A_TEST_BROWSER_DIR" && bun install
 
     - name: Install system deps
       shell: bash
