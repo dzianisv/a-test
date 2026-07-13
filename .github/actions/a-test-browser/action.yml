@@ -18,16 +18,73 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install a-test
+    - name: Resolve runner source (local vs. remote invocation)
+      id: source
       shell: bash
-      run: pip install a-test
+      env:
+        # github.action_repository / github.action_ref are ONLY populated
+        # when this action is referenced remotely, e.g.
+        # `uses: dzianisv/a-test/.github/actions/a-test-browser@v1` from a
+        # downstream consumer's own workflow. For a LOCAL reference
+        # (`uses: ./.github/actions/a-test-browser`, used by this repo's own
+        # cua-*.yml workflows), there is no separate action repo to name, so
+        # both are empty strings. Per GitHub's own guidance, they are
+        # captured here via `env:` rather than interpolated directly into a
+        # `run:` script body.
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [ -n "$ACTION_REPOSITORY" ]; then
+          # Remote consumer: this action's own code was fetched from
+          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching a-test
+          # Python package + browser runner source from that SAME repo+ref
+          # into a dedicated _a-test checkout — keeping it pinned in
+          # lockstep with whatever version of this action the consumer
+          # chose, rather than relying on a PyPI release that may not exist
+          # for that revision or silently drifting to dzianisv/a-test's
+          # unpinned default branch.
+          echo "mode=remote" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
+        else
+          # Local invocation: the calling workflow's own `actions/checkout`
+          # step already placed the exact revision under test (this IS the
+          # a-test repo — pyproject.toml/a_test/browser live at the
+          # workspace root) — reuse it directly instead of re-fetching a
+          # second, potentially-stale copy of the remote default branch.
+          echo "mode=local" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+        fi
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
 
-    - name: Checkout a-test browser runner
+    - name: Checkout runner (remote consumers only)
+      if: steps.source.outputs.mode == 'remote'
       uses: actions/checkout@v4
       with:
-        repository: dzianisv/a-test
+        repository: ${{ steps.source.outputs.repository }}
+        ref: ${{ steps.source.outputs.ref }}
         path: _a-test
-        sparse-checkout: browser
+        # Union of the Python CLI package (pyproject.toml + a_test/) and the
+        # browser runner (browser/) — fetched together in one checkout, at
+        # the SAME repo+ref this action itself was invoked from, so a remote
+        # consumer always gets the browser runner matching their pinned
+        # version instead of silently drifting to dzianisv/a-test's
+        # unpinned default branch.
+        sparse-checkout: |
+          a_test
+          pyproject.toml
+          browser
+
+    - name: Install a-test
+      # Installed editable from the resolved runner source (local checkout
+      # or the remote-mode _a-test checkout above) rather than `pip
+      # install a-test`: the a-test PyPI package is not (yet) published for
+      # every revision this action might be pinned to, so relying on it
+      # fails outright ("No matching distribution found for a-test").
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: pip install -e "$A_TEST_DIR"
 
     - name: Install bun
       uses: oven-sh/setup-bun@v2
@@ -36,7 +93,9 @@ runs:
 
     - name: Install browser runner deps
       shell: bash
-      run: cd _a-test/browser && bun install
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: cd "$A_TEST_DIR/browser" && bun install
 
     - name: Install system deps
       shell: bash
@@ -54,16 +113,35 @@ runs:
     - name: Run CUA test in Chrome
       shell: bash
       env:
-        A_TEST_BROWSER_DIR: ${{ github.action_path }}/../../_a-test/browser
+        # No `cd` in this step — cwd stays at its default, $GITHUB_WORKSPACE.
+        # --case is the CALLER's own test case path (e.g.
+        # examples/open-weather.yaml for this repo's own local workflows, or
+        # a downstream consumer's own file for a remote invocation) and must
+        # resolve relative to $GITHUB_WORKSPACE. In local mode that's the
+        # same directory as the resolved runner source, but in remote mode
+        # $GITHUB_WORKSPACE is the CONSUMER's own checked-out repo, while the
+        # resolved runner source lives in a separate ./_a-test checkout —
+        # cd-ing into the latter would break the consumer's own relative
+        # --case path. a_test/cli.py's _find_browser_runner() reads
+        # A_TEST_BROWSER_DIR directly (as an absolute-path override) to
+        # locate browser/runner.ts regardless of cwd, so that's still set
+        # from the resolved source dir.
+        A_TEST_BROWSER_DIR: ${{ steps.source.outputs.dir }}/browser
         CUA_MODEL: ${{ inputs.model }}
         DISPLAY: ':99'
+        # Threaded through env: (never interpolated directly into the run:
+        # body) for the same shell-injection-safety reason documented
+        # throughout the unified a-test action.
+        CASE_INPUT: ${{ inputs.case }}
+        OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
+        URL_INPUT: ${{ inputs.url }}
       run: |
-        URL_ARG=""
-        if [ -n "${{ inputs.url }}" ]; then
-          URL_ARG="--url ${{ inputs.url }}"
+        # Build the argument list as a bash array (rather than a naive
+        # string-concatenated flag) so an optional --url value can't cause
+        # word-splitting or injection when expanded below, and so the
+        # required args are never subject to unquoted interpolation either.
+        args=(run --target browser --case "$CASE_INPUT" --output-dir "$OUTPUT_DIR_INPUT")
+        if [ -n "$URL_INPUT" ]; then
+          args+=(--url "$URL_INPUT")
         fi
-        a-test run \
-          --target browser \
-          --case ${{ inputs.case }} \
-          --output-dir ${{ inputs.output-dir }} \
-          $URL_ARG
+        a-test "${args[@]}"

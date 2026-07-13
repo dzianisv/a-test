@@ -1,0 +1,318 @@
+name: 'a-test'
+description: >-
+  Unified a-test action: auto-detects which surface (android, browser, or
+  desktop) to run from the `script` input's path — unless `environment` is
+  explicitly set to one of android/browser/desktop — replacing the need to
+  pick between the separate a-test-android, a-test-browser, and
+  a-test-desktop actions for common cases. The vision-judge backend is, in
+  turn, auto-detected at runtime by a-test itself, in priority order:
+  AZURE_CUA_API_KEY (+ AZURE_CUA_BASE_URL), then OPENAI_API_KEY (+
+  OPENAI_BASE_URL), then HAI_API_KEY (+ optional HAI_BASE_URL — H Company
+  Holo Models API, https://hub.hcompany.ai). Secrets must be set in the
+  calling job's env — this action has no input for any API key.
+
+inputs:
+  script:
+    description: 'Path to the test case/script to run: .py/.json/.yaml/.yml for android or browser targets, .ts for desktop dual-surface scripts'
+    required: true
+  environment:
+    description: 'Explicit override: one of android, browser, desktop. Leave empty to auto-detect from the script path.'
+    default: ''
+  output-dir:
+    description: 'Directory for screenshots, demo.gif, recording, result files'
+    default: '/tmp/a-test-output'
+  model:
+    description: 'Azure OpenAI model deployment name (also passed as AZURE_CUA_MODEL/CUA_MODEL for other backends)'
+    default: 'gpt-5.4'
+  url:
+    description: 'Browser-only starting URL override (overrides the url field in the test case); no-op for other environments'
+    default: ''
+  api-level:
+    description: 'Android-only: emulator API level'
+    default: '33'
+  apk-path:
+    description: 'Android-only: optional path to an APK to install before the test'
+    default: ''
+  hai-base-url:
+    description: 'Desktop-only: optional override for the H Company Holo Models API base URL (HAI_BASE_URL); leave empty to use the script''s own default'
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Detect environment
+      id: detect
+      shell: bash
+      env:
+        # inputs.environment / inputs.script are read via env: (never
+        # interpolated directly into this run: body) — GitHub Actions
+        # substitutes ${{ }} expressions as raw text before the shell parses
+        # the script, so an unquoted inline interpolation of a caller-supplied
+        # value is a classic script-injection vector. Reading them back as
+        # ordinary quoted shell variables avoids that, matching the pattern
+        # used throughout a-test-desktop/action.yml.
+        ENVIRONMENT_INPUT: ${{ inputs.environment }}
+        SCRIPT_INPUT: ${{ inputs.script }}
+      run: |
+        if [ -n "$ENVIRONMENT_INPUT" ]; then
+          case "$ENVIRONMENT_INPUT" in
+            android|browser|desktop)
+              RESOLVED="$ENVIRONMENT_INPUT"
+              ;;
+            *)
+              echo "::error::Invalid environment '$ENVIRONMENT_INPUT' — must be one of: android, browser, desktop"
+              exit 1
+              ;;
+          esac
+        else
+          # Auto-detect from the script path: .ts scripts are dual-surface
+          # (terminal + browser) desktop scripts driven by bun; anything else
+          # is an android or browser test case (.py/.json/.yaml/.yml),
+          # distinguished by whether "android" appears anywhere in the path.
+          case "$SCRIPT_INPUT" in
+            *.ts)
+              RESOLVED="desktop"
+              ;;
+            *)
+              LOWER_SCRIPT=$(printf '%s' "$SCRIPT_INPUT" | tr '[:upper:]' '[:lower:]')
+              case "$LOWER_SCRIPT" in
+                *android*)
+                  RESOLVED="android"
+                  ;;
+                *)
+                  RESOLVED="browser"
+                  ;;
+              esac
+              ;;
+          esac
+        fi
+        echo "environment=$RESOLVED" >> "$GITHUB_OUTPUT"
+
+    - name: Resolve runner source (local vs. remote invocation)
+      id: source
+      shell: bash
+      env:
+        # github.action_repository / github.action_ref are ONLY populated
+        # when this action is referenced remotely, e.g.
+        # `uses: dzianisv/a-test/.github/actions/a-test@v1` from a downstream
+        # consumer's own workflow. For a LOCAL reference
+        # (`uses: ./.github/actions/a-test`, used by this repo's own
+        # cua-*.yml workflows), there is no separate action repo to name, so
+        # both are empty strings. Per GitHub's own guidance, they are
+        # captured here via `env:` rather than interpolated directly into a
+        # `run:` script body.
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [ -n "$ACTION_REPOSITORY" ]; then
+          # Remote consumer: this action's own code was fetched from
+          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching runner
+          # (Python CLI + browser + core+surfaces+examples) from that SAME
+          # repo+ref into a dedicated _a-test checkout — keeping the runner
+          # pinned in lockstep with whatever version of this action the
+          # consumer chose.
+          echo "mode=remote" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
+        else
+          # Local invocation: the calling workflow's own `actions/checkout`
+          # step already placed the exact revision under test (this IS the
+          # a-test repo — pyproject.toml/a_test/browser/core/surfaces/examples
+          # live at the workspace root) — reuse it directly instead of
+          # re-fetching a second, potentially-stale copy of the remote
+          # default branch.
+          echo "mode=local" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+        fi
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout runner (remote consumers only)
+      if: steps.source.outputs.mode == 'remote'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ steps.source.outputs.repository }}
+        ref: ${{ steps.source.outputs.ref }}
+        path: _a-test
+        # Union of what every environment needs: the Python CLI package
+        # (pyproject.toml + a_test/, for android/browser), the browser
+        # runner (browser), and the desktop runner (core/surfaces/examples/
+        # dual-surface plus the bun project files) — always fetched together
+        # regardless of which environment actually triggered this step,
+        # since the extra sparse-checkout paths are cheap and this keeps the
+        # action simple with a single checkout step.
+        sparse-checkout: |
+          a_test
+          pyproject.toml
+          browser
+          core
+          surfaces
+          examples/dual-surface
+          package.json
+          bun.lock
+          tsconfig.json
+
+    - name: Install a-test
+      # Desktop (dual-surface) scripts are pure bun/TypeScript and never
+      # invoke the a-test Python CLI (see the "Run CUA test (desktop)" step
+      # below, which calls `bun run` directly) — so this step is skipped for
+      # desktop. For android/browser, the CLI IS required, and it is
+      # installed editable from the resolved runner source (local checkout
+      # or the remote-mode _a-test checkout above) rather than `pip install
+      # a-test`: the a-test PyPI package is not (yet) published for every
+      # revision this action might be pinned to, so relying on it would make
+      # this step fail identically to the bug this comment replaces.
+      if: steps.detect.outputs.environment == 'android' || steps.detect.outputs.environment == 'browser'
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: pip install -e "$A_TEST_DIR"
+
+    # --- android-only steps ---
+
+    - name: Install ffmpeg
+      if: steps.detect.outputs.environment == 'android'
+      shell: bash
+      run: sudo apt-get install -y ffmpeg
+
+    - name: Enable KVM
+      if: steps.detect.outputs.environment == 'android'
+      shell: bash
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+
+    - name: Run CUA test on Android emulator
+      if: steps.detect.outputs.environment == 'android'
+      uses: reactivecircus/android-emulator-runner@v2
+      env:
+        AZURE_CUA_MODEL: ${{ inputs.model }}
+        # Threaded through env: for the same shell-injection-safety reason as
+        # the Detect environment step above — this script: field below IS a
+        # shell body executed by the nested action, so raw ${{ inputs.* }}
+        # interpolation inside it must be avoided.
+        SCRIPT_INPUT: ${{ inputs.script }}
+        OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
+        APK_PATH_INPUT: ${{ inputs.apk-path }}
+      with:
+        # These, by contrast, are pure YAML-to-YAML value passing into
+        # another action's `with:` block (not shell text), so direct
+        # ${{ inputs.* }} interpolation here is safe.
+        api-level: ${{ inputs.api-level }}
+        arch: x86_64
+        emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+        disable-animations: true
+        script: |
+          if [ -n "$APK_PATH_INPUT" ]; then adb install -r "$APK_PATH_INPUT"; fi
+          a-test run --target android --case "$SCRIPT_INPUT" --output-dir "$OUTPUT_DIR_INPUT"
+
+    # --- shared browser/desktop steps ---
+    # (runner source is already resolved/checked out above, shared with the
+    # android-only "Install a-test" step)
+
+    - name: Install bun
+      if: steps.detect.outputs.environment == 'browser' || steps.detect.outputs.environment == 'desktop'
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+
+    - name: Install browser runner deps
+      if: steps.detect.outputs.environment == 'browser'
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: cd "$A_TEST_DIR/browser" && bun install
+
+    - name: Install desktop runner deps
+      if: steps.detect.outputs.environment == 'desktop'
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: cd "$A_TEST_DIR" && bun install
+
+    - name: Install system deps
+      if: steps.detect.outputs.environment == 'browser' || steps.detect.outputs.environment == 'desktop'
+      shell: bash
+      env:
+        # steps.detect.outputs.environment is already validated to be one of
+        # android/browser/desktop by the Detect environment step above (not
+        # raw, unvalidated `inputs.*`), but it's still threaded through env:
+        # here for consistency and to keep the run: body free of any `${{ }}`
+        # expressions.
+        RESOLVED_ENV: ${{ steps.detect.outputs.environment }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb xdotool scrot ffmpeg
+        # xterm + bsdutils (for the `script` command, used to record terminal
+        # sessions) are only needed by the desktop (dual-surface) runner —
+        # gated to desktop-only here for tighter parity with
+        # a-test-desktop/action.yml, rather than installing them
+        # unconditionally for browser-only runs that never use them.
+        if [ "$RESOLVED_ENV" = "desktop" ]; then
+          sudo apt-get install -y xterm bsdutils
+          script --version
+        fi
+        google-chrome --version
+
+    - name: Start Xvfb
+      if: steps.detect.outputs.environment == 'browser' || steps.detect.outputs.environment == 'desktop'
+      shell: bash
+      run: |
+        Xvfb :99 -screen 0 1920x1080x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
+
+    - name: Run CUA test (browser)
+      if: steps.detect.outputs.environment == 'browser'
+      shell: bash
+      env:
+        # No `cd` in this step — cwd stays at its default, $GITHUB_WORKSPACE.
+        # --case/--script is the CALLER's own test case path (e.g.
+        # examples/open-weather.yaml for this repo's own local workflows, or
+        # a downstream consumer's own file for a remote invocation) and must
+        # resolve relative to $GITHUB_WORKSPACE. In local mode that's the
+        # same directory as the resolved runner source, but in remote mode
+        # $GITHUB_WORKSPACE is the CONSUMER's own checked-out repo, while the
+        # resolved runner source lives in a separate ./_a-test checkout —
+        # cd-ing into the latter would break the consumer's own relative
+        # --case path. a_test/cli.py's _find_browser_runner() reads
+        # A_TEST_BROWSER_DIR directly (as an absolute-path override) to
+        # locate browser/runner.ts regardless of cwd, so that's still set
+        # from the resolved source dir.
+        A_TEST_BROWSER_DIR: ${{ steps.source.outputs.dir }}/browser
+        CUA_MODEL: ${{ inputs.model }}
+        DISPLAY: ':99'
+        SCRIPT_INPUT: ${{ inputs.script }}
+        OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
+        URL_INPUT: ${{ inputs.url }}
+      run: |
+        # Build the argument list as a bash array (rather than a naive
+        # string-concatenated flag) so an optional --url value can't cause
+        # word-splitting or injection when expanded below, and so the
+        # required args are never subject to unquoted interpolation either.
+        args=(run --target browser --case "$SCRIPT_INPUT" --output-dir "$OUTPUT_DIR_INPUT")
+        if [ -n "$URL_INPUT" ]; then
+          args+=(--url "$URL_INPUT")
+        fi
+        a-test "${args[@]}"
+
+    - name: Run CUA test (desktop)
+      if: steps.detect.outputs.environment == 'desktop'
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+        CUA_MODEL: ${{ inputs.model }}
+        DISPLAY: ':99'
+        SCRIPT_INPUT: ${{ inputs.script }}
+        OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
+        HAI_BASE_URL_INPUT: ${{ inputs.hai-base-url }}
+      run: |
+        # HAI_BASE_URL is only exported when non-empty: the script does
+        # `process.env.HAI_BASE_URL ?? "https://api.hcompany.ai/v1/"`, and `??`
+        # only falls back on null/undefined, not on an empty string — so a
+        # blank HAI_BASE_URL env var would silently override the script's own
+        # default with "". Setting it conditionally here preserves that default.
+        if [ -n "$HAI_BASE_URL_INPUT" ]; then
+          export HAI_BASE_URL="$HAI_BASE_URL_INPUT"
+        fi
+        cd "$A_TEST_DIR"
+        bun run "$SCRIPT_INPUT" "$OUTPUT_DIR_INPUT"

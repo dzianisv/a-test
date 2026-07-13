@@ -10,9 +10,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run dual-surface (terminal + browser) example
-        uses: ./.github/actions/a-test-desktop
+        uses: ./.github/actions/a-test
         with:
-          case: examples/dual-surface/terminal-and-browser.ts
+          script: examples/dual-surface/terminal-and-browser.ts
+          environment: desktop
           output-dir: /tmp/dual-surface-output
           model: gpt-5.4
         env:

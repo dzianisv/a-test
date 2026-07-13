@@ -5,6 +5,39 @@
 The easiest way to add a-test to any GitHub Actions workflow is via the
 reusable composite actions in this repo.
 
+### Unified action (recommended)
+
+`a-test-android`, `a-test-browser`, and `a-test-desktop` (documented below)
+are still valid and fully supported — but the default recommended
+integration path is now the single unified `a-test` action, which
+auto-detects which of the three to run from the `script` path:
+
+```yaml
+- uses: dzianisv/a-test/.github/actions/a-test@main
+  with:
+    script: examples/open-weather.yaml
+  env:
+    AZURE_CUA_API_KEY: ${{ secrets.AZURE_CUA_API_KEY }}
+    AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
+```
+
+Auto-detection rules (skipped entirely if you set `environment` explicitly):
+
+1. `script` ends in `.ts` → `desktop`.
+2. Else `script`'s path/filename contains `android` (case-insensitive) → `android`.
+3. Else → `browser` (default fallback).
+
+Set the `environment` input to `android`, `browser`, or `desktop` to override
+auto-detection outright. Other inputs mirror the per-surface actions:
+`output-dir`, `model`, plus the surface-specific `url` (browser),
+`api-level`/`apk-path` (android), and `hai-base-url` (desktop) — all are
+no-ops when a different environment is selected. As with every action in
+this repo, there is no input for any API key; secrets are always supplied
+via the calling job's `env:` block.
+
+Reach for the per-surface actions directly (below) when you need
+per-surface-only tuning or want to hard-pin a workflow to a single surface.
+
 ### Android
 
 ```yaml
@@ -167,10 +200,10 @@ up a workflow.
 
 | Secret | Used by | Notes |
 | --- | --- | --- |
-| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-dual-surface.yml`, `cua-chrome-webapp.yml`, `a-test-android`/`a-test-browser`/`a-test-desktop` actions | Azure OpenAI-compatible CUA planner/vision key. |
+| `AZURE_CUA_API_KEY` | `cua-chrome-sync-login.yml`, `cua-dual-surface.yml`, `cua-chrome-webapp.yml`, `a-test-android`/`a-test-browser`/`a-test-desktop` actions, unified `a-test` action | Azure OpenAI-compatible CUA planner/vision key. |
 | `AZURE_CUA_BASE_URL` | same as above | Azure endpoint base URL paired with `AZURE_CUA_API_KEY`. |
-| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `a-test-desktop` action, `a_test/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
-| `HAI_BASE_URL` | `a-test-desktop` action (optional `hai-base-url` input) | Optional override for the H Company Holo Models API base URL; defaults to `https://api.hcompany.ai/v1/` if unset. |
+| `HAI_API_KEY` | `cua-chrome-sync-login-hcompany.yml`, `a-test-desktop` action, unified `a-test` action, `a_test/grounding.py`, `bench/backends.yaml` (`holo` entry) | H Company Holo Models API key. Create one at [portal.hcompany.ai](https://portal.hcompany.ai); the free tier (`holo3-1-35b-a3b`) is rate-limited to 5 req/min. |
+| `HAI_BASE_URL` | `a-test-desktop` action (optional `hai-base-url` input), unified `a-test` action (same input) | Optional override for the H Company Holo Models API base URL; defaults to `https://api.hcompany.ai/v1/` if unset. |
 
 `gh secret set` example (run locally — this reads the value from your own
 terminal/clipboard and uploads it directly to GitHub; it is never displayed,

@@ -21,9 +21,64 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install a-test
+    - name: Resolve runner source (local vs. remote invocation)
+      id: source
       shell: bash
-      run: pip install a-test
+      env:
+        # github.action_repository / github.action_ref are ONLY populated
+        # when this action is referenced remotely, e.g.
+        # `uses: dzianisv/a-test/.github/actions/a-test-android@v1` from a
+        # downstream consumer's own workflow. For a LOCAL reference
+        # (`uses: ./.github/actions/a-test-android`, used by this repo's own
+        # cua-*.yml workflows), there is no separate action repo to name, so
+        # both are empty strings. Per GitHub's own guidance, they are
+        # captured here via `env:` rather than interpolated directly into a
+        # `run:` script body.
+        ACTION_REPOSITORY: ${{ github.action_repository }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        if [ -n "$ACTION_REPOSITORY" ]; then
+          # Remote consumer: this action's own code was fetched from
+          # $ACTION_REPOSITORY@$ACTION_REF, so fetch the matching a-test
+          # Python package source from that SAME repo+ref into a dedicated
+          # _a-test checkout — keeping it pinned in lockstep with whatever
+          # version of this action the consumer chose, rather than relying
+          # on a PyPI release that may not exist for that revision.
+          echo "mode=remote" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}/_a-test" >> "$GITHUB_OUTPUT"
+        else
+          # Local invocation: the calling workflow's own `actions/checkout`
+          # step already placed the exact revision under test (this IS the
+          # a-test repo — pyproject.toml/a_test/ live at the workspace root)
+          # — reuse it directly instead of re-fetching a second, potentially
+          # stale copy of the remote default branch.
+          echo "mode=local" >> "$GITHUB_OUTPUT"
+          echo "dir=${GITHUB_WORKSPACE}" >> "$GITHUB_OUTPUT"
+        fi
+        echo "repository=${ACTION_REPOSITORY:-dzianisv/a-test}" >> "$GITHUB_OUTPUT"
+        echo "ref=${ACTION_REF:-main}" >> "$GITHUB_OUTPUT"
+
+    - name: Checkout runner (remote consumers only)
+      if: steps.source.outputs.mode == 'remote'
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ steps.source.outputs.repository }}
+        ref: ${{ steps.source.outputs.ref }}
+        path: _a-test
+        sparse-checkout: |
+          a_test
+          pyproject.toml
+
+    - name: Install a-test
+      # Installed editable from the resolved runner source (local checkout
+      # or the remote-mode _a-test checkout above) rather than `pip install
+      # a-test`: the a-test PyPI package is not (yet) published for every
+      # revision this action might be pinned to, so relying on it fails
+      # outright ("No matching distribution found for a-test").
+      shell: bash
+      env:
+        A_TEST_DIR: ${{ steps.source.outputs.dir }}
+      run: pip install -e "$A_TEST_DIR"
 
     - name: Install ffmpeg
       shell: bash
@@ -40,13 +95,23 @@ runs:
       uses: reactivecircus/android-emulator-runner@v2
       env:
         AZURE_CUA_MODEL: ${{ inputs.model }}
+        # Threaded through env: for the same shell-injection-safety reason
+        # as the unified a-test action's equivalent step — this script:
+        # field below IS a shell body executed by the nested action, so raw
+        # ${{ inputs.* }} interpolation inside it must be avoided (GitHub
+        # Actions substitutes ${{ }} as text before the shell parses the
+        # script).
+        CASE_INPUT: ${{ inputs.case }}
+        OUTPUT_DIR_INPUT: ${{ inputs.output-dir }}
+        APK_PATH_INPUT: ${{ inputs.apk-path }}
       with:
+        # These, by contrast, are pure YAML-to-YAML value passing into
+        # another action's `with:` block (not shell text), so direct
+        # ${{ inputs.* }} interpolation here is safe.
         api-level: ${{ inputs.api-level }}
         arch: x86_64
         emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
         disable-animations: true
         script: |
-          if [ -n "${{ inputs.apk-path }}" ]; then
-            adb install -r "${{ inputs.apk-path }}"
-          fi
-          a-test run --target android --case ${{ inputs.case }} --output-dir ${{ inputs.output-dir }}
+          if [ -n "$APK_PATH_INPUT" ]; then adb install -r "$APK_PATH_INPUT"; fi
+          a-test run --target android --case "$CASE_INPUT" --output-dir "$OUTPUT_DIR_INPUT"
