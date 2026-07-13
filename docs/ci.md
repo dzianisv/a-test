@@ -52,7 +52,7 @@ per-surface-only tuning or want to hard-pin a workflow to a single surface.
     AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
 ```
 
-The action handles: `pip install a-test`, `ffmpeg`, KVM device, and the emulator runner.
+The action handles: installing `a_test` from a checkout of this repository (a local reuse of the calling workflow's own checkout, or a dedicated sparse checkout of the pinned ref for external consumers — never a PyPI package), `ffmpeg`, KVM device, and the emulator runner.
 
 ### Browser
 
@@ -66,7 +66,7 @@ The action handles: `pip install a-test`, `ffmpeg`, KVM device, and the emulator
     AZURE_CUA_BASE_URL: ${{ secrets.AZURE_CUA_BASE_URL }}
 ```
 
-The action handles: `pip install a-test`, bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and Xvfb startup.
+The action handles: installing `a_test` from a checkout of this repository (a local reuse of the calling workflow's own checkout, or a dedicated sparse checkout of the pinned ref for external consumers — never a PyPI package), bun, browser runner deps, `xvfb`, `xdotool`, `scrot`, `ffmpeg`, and Xvfb startup.
 
 ### Desktop (Terminal + Browser)
 
@@ -101,7 +101,10 @@ The action handles: `pip install a-test`, bun, browser runner deps, `xvfb`, `xdo
     # HAI_BASE_URL optional — defaults to https://api.hcompany.ai/v1/
 ```
 
-The action handles: `pip install a-test`, bun, a sparse checkout of `core`,
+The action handles: installing `a_test` from a checkout of this repository
+(a local reuse of the calling workflow's own checkout, or a dedicated sparse
+checkout of the pinned ref for external consumers — never a PyPI package),
+bun, a sparse checkout of `core`,
 `surfaces`, and `examples/dual-surface`, `xvfb`, `xdotool`, `scrot`, `ffmpeg`,
 `xterm`, `bsdutils` (for the `script` command used by `chrome-sync-login.ts`),
 and Xvfb startup. The vision-judge backend is auto-detected at runtime by the
@@ -115,7 +118,7 @@ then `OPENAI_API_KEY` (+ `OPENAI_BASE_URL`), then `HAI_API_KEY` (+ optional
 Uses `reactivecircus/android-emulator-runner@v2` on `ubuntu-latest`.
 
 Key setup steps:
-1. `pip install a-test` + `sudo apt-get install -y ffmpeg`
+1. `pip install -e .` (from a checkout of this repo — not a PyPI package) + `sudo apt-get install -y ffmpeg`
 2. Enable KVM (required for hardware acceleration):
    ```yaml
    - name: Enable KVM
@@ -134,7 +137,7 @@ Required secrets: `AZURE_CUA_API_KEY`, `AZURE_CUA_BASE_URL`.
 Runs on `ubuntu-latest` with `Xvfb` for a virtual display.
 
 Key setup steps:
-1. `pip install a-test`, install bun via `oven-sh/setup-bun@v2`
+1. `pip install -e .` (from a checkout of this repo — not a PyPI package), install bun via `oven-sh/setup-bun@v2`
 2. `cd browser && bun install`
 3. `sudo apt-get install -y xvfb xdotool scrot ffmpeg`
 4. Start Xvfb and export `DISPLAY=:99`
