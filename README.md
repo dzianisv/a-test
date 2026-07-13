@@ -84,6 +84,16 @@ A real computer-use agent completes 27 + 18 = 45 in the Android Calculator app �
 
 Reference implementation: `tests/cua/cws-visual-install.ts` in [VibeTechnologies/VibeWebAgent PR #1504](https://github.com/VibeTechnologies/VibeWebAgent/pull/1504); extraction of these primitives into agentprobe core is tracked in [issue #1](https://github.com/dzianisv/agentprobe/issues/1).
 
+### OpenCode Mobile: Android onboarding + real coding task
+
+**[OpenCode Mobile](https://github.com/dzianisv/opencode-mobile)**, an open-source Android client for the opencode AI coding agent, is CUA-tested end to end on a real Android emulator: the agent adds a server connection, connects and confirms the session list loads a pre-existing session from the live opencode server (proving real data, not an empty screen), opens a new AI coding session, and submits a real Python task — `helloworld.py` plus a `helloworld_test.py` pytest suite — then waits for the agent to finish writing files and verifies the output before checking the Settings/model screen. Verification is layered: a session pre-created via opencode's own HTTP API must be visible in-app (deterministic, server-side truth) alongside on-screen text/state assertions at each phase, with every step screen-recorded.
+
+![OpenCode Mobile CUA showcase](https://raw.githubusercontent.com/dzianisv/opencode-mobile/main/docs-site/screenshots/02.png)
+
+**▶ Watch the full recording: [mp4](https://raw.githubusercontent.com/dzianisv/opencode-mobile/main/docs-site/demo.mp4)**
+
+Provenance: [`CUA Smoke Test` run #28041009456](https://github.com/dzianisv/opencode-mobile/actions/runs/28041009456) (green on `main`), workflow [`cua-smoke.yml`](https://github.com/dzianisv/opencode-mobile/blob/main/.github/workflows/cua-smoke.yml), script [`scripts/android-cua-smoke.py`](https://github.com/dzianisv/opencode-mobile/blob/main/scripts/android-cua-smoke.py).
+
 ## Terminal + Browser dual-surface testing
 
 Some flows span two surfaces at once — a CLI in a terminal driving a browser-based auth step, for
@@ -263,6 +273,9 @@ This makes demos much more educational — viewers see the agent's reasoning in 
 ```
 
 ## CI Integration (GitHub Actions)
+
+![GitHub Actions CI workflow showing a successful run with all checks passing](docs/images/github-actions-ci-success.png)
+*Screenshot: a successful GitHub Actions CI run with all checks passing.*
 
 ### Android — one-liner via reusable action
 
