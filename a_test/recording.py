@@ -11,6 +11,21 @@ except ImportError:
     PILLOW_AVAILABLE = False
 
 
+def _adb_safe(args, timeout):
+    """Run an adb command, swallowing timeouts/errors. Returns CompletedProcess or None.
+
+    Recording is best-effort telemetry: a stuck `adb` call must never abort the
+    test case (which owns result.json + the vision judge). This is why every adb
+    invocation here is wrapped instead of allowed to raise.
+    """
+    try:
+        return subprocess.run(["adb", *args], capture_output=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None
+    except Exception:
+        return None
+
+
 def start_screen_recording(scenario_name: str):
     """Start ADB screen recording. Returns (thread, remote_path).
 
@@ -18,6 +33,11 @@ def start_screen_recording(scenario_name: str):
     signals the on-device recorder via `pkill -2 screenrecord` and pulls the MP4.
     """
     remote_path = f"/sdcard/cua_{scenario_name}.mp4"
+
+    # Kill any leftover recorder from a previous case so recordings don't stack
+    # (a lingering screenrecord is the usual cause of a hung pkill on teardown).
+    _adb_safe(["shell", "pkill", "-2", "screenrecord"], timeout=10)
+    time.sleep(0.5)
 
     def _record():
         try:
@@ -35,21 +55,24 @@ def start_screen_recording(scenario_name: str):
 
 
 def stop_screen_recording(thread, remote_path: str, local_path: str) -> bool:
-    """Stop recorder, pull video to local_path. Returns True on success."""
-    subprocess.run(
-        ["adb", "shell", "pkill", "-2", "screenrecord"],
-        capture_output=True, timeout=10,
-    )
+    """Stop recorder, pull video to local_path. Returns True on success.
+
+    Never raises: a recording-teardown failure must not abort the test case.
+    """
+    _adb_safe(["shell", "pkill", "-2", "screenrecord"], timeout=10)
     time.sleep(2.0)
-    thread.join(timeout=5)
-    result = subprocess.run(
-        ["adb", "pull", remote_path, local_path],
-        capture_output=True, timeout=30,
-    )
-    if result.returncode == 0 and Path(local_path).exists():
+    try:
+        thread.join(timeout=5)
+    except Exception:
+        pass
+    result = _adb_safe(["pull", remote_path, local_path], timeout=30)
+    if result is not None and result.returncode == 0 and Path(local_path).exists():
         print(f"  [recording] saved to {local_path}")
         return True
-    print(f"  [recording] pull failed: {result.stderr.decode(errors='replace').strip()}")
+    if result is None:
+        print("  [recording] stop/pull timed out; continuing without video")
+    else:
+        print(f"  [recording] pull failed: {result.stderr.decode(errors='replace').strip()}")
     return False
 
 
