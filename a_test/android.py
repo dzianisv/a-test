@@ -49,13 +49,44 @@ def current_foreground_package() -> str:
     return ""
 
 
+@lru_cache(maxsize=32)
+def _launcher_component(package: str) -> str:
+    """Resolve the package's MAIN/LAUNCHER activity as 'pkg/activity', or '' if unknown."""
+    try:
+        out = adb("shell", "cmd", "package", "resolve-activity", "--brief",
+                  "-c", "android.intent.category.LAUNCHER", package)
+    except Exception:
+        return ""
+    for line in reversed(out.splitlines()):
+        line = line.strip()
+        if line.startswith(f"{package}/"):
+            return line
+    return ""
+
+
+def _launch_package(package: str) -> None:
+    """Launch a package's main activity. Uses an explicit `am start` on the resolved
+    launcher component (reliable on all emulator images) and falls back to monkey.
+
+    `monkey -c android.intent.category.LAUNCHER` silently fails to foreground the app
+    on some system images (e.g. android-30 google_apis arm64), leaving the launcher
+    on top — so an explicit component start is preferred.
+    """
+    component = _launcher_component(package)
+    if component:
+        adb("shell", "am", "start", "-a", "android.intent.action.MAIN",
+            "-c", "android.intent.category.LAUNCHER", "-n", component)
+    else:
+        adb("shell", "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
+
+
 def ensure_app_foreground(package: str, retries: int = 3, verbose: bool = False) -> bool:
     """Bring app to foreground before scenario start."""
     for attempt in range(retries):
         current = current_foreground_package()
         if current == package:
             return True
-        adb("shell", "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
+        _launch_package(package)
         _sleep(2.0)
         if verbose:
             seen = current or "unknown"
@@ -221,7 +252,7 @@ def background_app() -> None:
 
 def foreground_app(package: str) -> None:
     """Bring the app back to foreground."""
-    adb("shell", "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
+    _launch_package(package)
     _sleep(1.5)
 
 
