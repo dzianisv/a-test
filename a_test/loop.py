@@ -8,7 +8,8 @@ from .actions import execute_action
 from .client import make_client
 from .prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_HOLO_APPENDIX
 from .judge import judge_result
-from .recording import assemble_gif, assemble_gif_from_video, start_screen_recording, stop_screen_recording
+from .recording import SegmentedRecorder, assemble_gif, assemble_gif_from_video
+from .evidence import verify_video_evidence
 
 
 def _extract_first_json_object(text: str) -> dict | None:
@@ -253,9 +254,8 @@ def run_case(
         maybe_dismiss_telemetry_consent(pkg, verbose=verbose)
         ensure_app_foreground(pkg, verbose=verbose)
 
-    rec_thread, rec_remote = start_screen_recording(case.name)
-    rec_local = str(Path(output_dir) / f"{case.name}.mp4")
-    rec_ok = False
+    recorder = SegmentedRecorder(case.name, output_dir).start()
+    rec_local = None
     try:
         loop_result = run_cua_step(
             goal=case.instruction,
@@ -273,12 +273,22 @@ def run_case(
             grounding_fn=grounding_fn,
         )
     finally:
-        rec_ok = stop_screen_recording(rec_thread, rec_remote, rec_local)
+        rec_local = recorder.stop_and_finalize()
 
     result = judge_result(case, loop_result, client, model)
 
     gif = None
-    if rec_ok and Path(rec_local).exists() and Path(rec_local).stat().st_size > 0:
+    if rec_local and Path(rec_local).exists() and Path(rec_local).stat().st_size > 0:
+        # Evidence gate: assert the video shows a real multi-step journey
+        # (enough frames, distinct screens, no blank frames) BEFORE anyone
+        # ships it. Recorded in result.json + report.json; a bad recording is
+        # surfaced loudly but does not flip the CUA verdict.
+        evidence = verify_video_evidence(
+            rec_local, report_path=str(Path(output_dir) / "report.json"))
+        result["evidence"] = {k: evidence[k] for k in
+                              ("verdict", "failures", "distinct_count", "nb_frames", "duration")}
+        if evidence["verdict"] != "pass":
+            print(f"  [evidence] FAIL: {'; '.join(evidence['failures'])}")
         gif = assemble_gif_from_video(rec_local, output_dir)
     if gif is None:
         gif = assemble_gif(output_dir)

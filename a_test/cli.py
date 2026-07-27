@@ -202,6 +202,18 @@ def main():
     run_parser.add_argument("--speed-multiplier", type=float, default=1.0,
                             help="Action timing multiplier: <1.0 = faster, >1.0 = slower")
 
+    verify_parser = subparsers.add_parser(
+        "verify-video",
+        help="Evidence-gate a recorded video (distinct screens, frame density, "
+             "no blank frames) before uploading it anywhere")
+    verify_parser.add_argument("video", help="Path to the MP4 to verify")
+    verify_parser.add_argument("--frames", type=int, default=6,
+                               help="Number of evenly spaced frames to sample (default: 6)")
+    verify_parser.add_argument("--min-distinct", type=int, default=4,
+                               help="Minimum visually distinct screens required (default: 4)")
+    verify_parser.add_argument("--report", default=None,
+                               help="Write the machine-readable report JSON to this path")
+
     if len(sys.argv) == 1:
         parser.print_help()
         sys.exit(0)
@@ -213,6 +225,13 @@ def main():
             _run_browser(args)
         else:
             _run_android(args)
+    elif args.command == "verify-video":
+        from .evidence import verify_video_evidence
+        report = verify_video_evidence(
+            args.video, frames=args.frames, min_distinct=args.min_distinct,
+            report_path=args.report)
+        print(json.dumps(report, indent=2))
+        sys.exit(0 if report["verdict"] == "pass" else 1)
     else:
         parser.print_help()
         sys.exit(0)
