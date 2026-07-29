@@ -290,8 +290,50 @@ This makes demos much more educational — viewers see the agent's reasoning in 
   calculator_math_02.png
   ...
   calculator_math.mp4        # screen recording (Android)
+  report.json               # video evidence report (see below)
   demo.gif                  # assembled from all step screenshots
   result.json               # {"verdict": "pass", "reason": "...", "steps": 7}
+```
+
+## Verified recordings (Android)
+
+`adb screenrecord` has two properties that silently produce demo videos that
+look like static pictures:
+
+1. **Variable framerate** — frames are emitted only on screen change. A 177s
+   session can contain 67 frames; a 10x speedup then yields a 3.6s slideshow.
+2. **180s hard cap** — naive use truncates long journeys.
+
+a-test fixes both and gates the result on real visual evidence:
+
+- **`SegmentedRecorder`** (`a_test.recording`) records back-to-back <180s
+  segments while the scenario runs, pulls them, re-encodes each to constant
+  framerate, and concatenates with re-encoding (avoiding the concat demuxer's
+  non-monotonic DTS bug). Optional `speedup` produces a Shorts-ready file.
+- **Video evidence gate** (`a_test.evidence`) samples K evenly spaced frames
+  (default 6) and FAILs if the video is frame-starved
+  (`nb_frames < duration*fps*0.5`), shows fewer than 4 visually distinct
+  screens (perceptual hash), or contains blank/black frames. It emits a
+  machine-readable `report.json` with per-frame hashes and a verdict.
+
+Android runs (`a-test run --target android`) do this automatically and record
+the evidence verdict in `result.json` under `"evidence"`.
+
+To record a journey yourself and refuse to ship a static video:
+
+```python
+from a_test.recording import record_verified_journey
+
+with record_verified_journey("signup", "out/", speedup=10.0) as journey:
+    run_my_scenario()
+# raises EvidenceGateError if the video is static/blank/frame-starved
+upload_to_youtube(journey["video"])   # out/signup.mp4; report at out/report.json
+```
+
+Or gate any existing video before an upload step (exits 1 on failure):
+
+```bash
+a-test verify-video final.mp4 --frames 6 --min-distinct 4 --report report.json
 ```
 
 ## CI Integration (GitHub Actions)
