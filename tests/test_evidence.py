@@ -149,3 +149,43 @@ def test_concat_segments_skips_missing(tmp_path):
 
 def test_concat_segments_empty_list(tmp_path):
     assert not concat_segments([], str(tmp_path / "out.mp4"))
+
+
+def test_dark_but_structured_frame_is_not_blank(tmp_path):
+    """A dark-themed app must not be reported as an all-black frame.
+
+    The tarot demo UI renders at a mean luma of ~15, below the old hard
+    _BLANK_MEAN cutoff, so every frame of a perfectly good recording was
+    flagged blank. Only near-UNIFORM frames are actually worthless.
+    """
+    import subprocess
+    video = tmp_path / "dark.mp4"
+    # A dark but clearly structured scene: moving white box on a near-black bg.
+    subprocess.run([
+        "ffmpeg", "-v", "error", "-y",
+        "-f", "lavfi", "-i", "color=c=0x0a0a12:s=256x256:d=4:r=30",
+        "-f", "lavfi", "-i", "color=c=white:s=48x48:d=4:r=30",
+        "-filter_complex", "[0][1]overlay=x='t*40':y='t*40'",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", str(video),
+    ], capture_output=True, timeout=120, check=True)
+
+    report = verify_video_evidence(str(video), frames=6, min_distinct=3)
+    blanks = [f for f in report["frames"] if f["blank"]]
+    assert not blanks, f"dark-but-structured frames wrongly flagged blank: {blanks}"
+
+
+def test_segmented_recorder_passes_size_and_bitrate():
+    """size/bitrate must reach the screenrecord invocation.
+
+    Native-resolution capture on a loaded host starves the on-device encoder
+    into a slideshow; downscaling is the documented mitigation, so the plumbing
+    is worth asserting.
+    """
+    from a_test.recording import SegmentedRecorder
+    rec = SegmentedRecorder("j", "/tmp", size="720x1600", bitrate=4_000_000)
+    cmd = rec._screenrecord_cmd("/sdcard/x.mp4")
+    assert "--size 720x1600" in cmd
+    assert "--bit-rate 4000000" in cmd
+
+    plain = SegmentedRecorder("j", "/tmp")._screenrecord_cmd("/sdcard/x.mp4")
+    assert "--size" not in plain and "--bit-rate" not in plain

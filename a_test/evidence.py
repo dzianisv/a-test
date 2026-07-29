@@ -12,7 +12,8 @@ The gate FAILS a video if:
   a) frame count < duration * fps * 0.5  (starved/variable-framerate encode)
   b) fewer than `min_distinct` visually distinct screens among K evenly
      spaced sampled frames (perceptual average-hash, hamming distance)
-  c) any sampled frame is blank (all-black / near-uniform)
+  c) any sampled frame is blank -- i.e. near-uniform AND either very dark or
+     very bright. Darkness alone is not enough: dark-themed apps are legit.
 
 It returns (and optionally writes) a machine-readable report:
   {"verdict": "pass"|"fail", "failures": [...], "duration": ..., "fps": ...,
@@ -121,6 +122,7 @@ def verify_video_evidence(
     frames: int = 6,
     min_distinct: int = 4,
     min_frame_ratio: float = 0.5,
+    blank_mean: float = _BLANK_MEAN,
     report_path: str | None = None,
 ) -> dict:
     """Gate a video: sample `frames` evenly spaced frames, verify real motion.
@@ -166,7 +168,13 @@ def verify_video_evidence(
                 continue
             mean = sum(pixels) / len(pixels)
             variance = sum((p - mean) ** 2 for p in pixels) / len(pixels)
-            blank = mean < _BLANK_MEAN or (mean > _WHITE_MEAN and variance < _UNIFORM_VARIANCE)
+            # `blank_mean` is tunable because a legitimately dark-themed app
+            # (deep purple/black tarot UI) renders at a mean luma of ~15 and
+            # would otherwise be reported as an all-black frame. Uniformity,
+            # not darkness alone, is what actually makes a frame worthless, so
+            # a dark frame with real structure is not blank.
+            blank = ((mean < blank_mean and variance < _UNIFORM_VARIANCE)
+                     or (mean > _WHITE_MEAN and variance < _UNIFORM_VARIANCE))
             h = _average_hash(pixels)
             signatures.append((h, mean))
             frame_reports.append({

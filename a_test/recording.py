@@ -130,16 +130,36 @@ class SegmentedRecorder:
         rec.start()
         ...run the scenario...
         final = rec.stop_and_finalize(fps=30, speedup=10.0)  # path or None
+
+    `size` / `bitrate` map to screenrecord's --size / --bit-rate. Recording a
+    1080x2400 device at native resolution on a contended host starves the
+    on-device encoder: a 112s session has been observed emitting 67 frames,
+    which is an unusable slideshow after any speedup and trips the evidence
+    gate. Downscaling the capture (e.g. size="720x1600") keeps the encoder
+    ahead of the display and is the difference between a real recording and a
+    static picture. Left as None, screenrecord's own defaults apply.
     """
 
     def __init__(self, scenario_name: str, output_dir: str,
-                 segment_limit: int = SEGMENT_LIMIT_SECONDS):
+                 segment_limit: int = SEGMENT_LIMIT_SECONDS,
+                 size: str | None = None, bitrate: int | None = None):
         self.scenario_name = scenario_name
         self.output_dir = Path(output_dir)
         self.segment_limit = segment_limit
+        self.size = size
+        self.bitrate = bitrate
         self.remote_segments: list = []
         self._stop = threading.Event()
         self._thread = None
+
+    def _screenrecord_cmd(self, remote: str) -> str:
+        parts = ["screenrecord", f"--time-limit {self.segment_limit}"]
+        if self.size:
+            parts.append(f"--size {self.size}")
+        if self.bitrate:
+            parts.append(f"--bit-rate {self.bitrate}")
+        parts.append(remote)
+        return " ".join(parts)
 
     def _record_loop(self):
         index = 0
@@ -148,8 +168,7 @@ class SegmentedRecorder:
             self.remote_segments.append(remote)
             try:
                 subprocess.run(
-                    ["adb", "shell",
-                     f"screenrecord --time-limit {self.segment_limit} {remote}"],
+                    ["adb", "shell", self._screenrecord_cmd(remote)],
                     capture_output=True, timeout=self.segment_limit + 30,
                 )
             except Exception:
@@ -204,7 +223,10 @@ class SegmentedRecorder:
 @contextlib.contextmanager
 def record_verified_journey(scenario_name: str, output_dir: str,
                             fps: int = 30, speedup: float = 1.0,
-                            frames: int = 6, min_distinct: int = 4):
+                            frames: int = 6, min_distinct: int = 4,
+                            size: str | None = None,
+                            bitrate: int | None = None,
+                            blank_mean: float | None = None):
     """Record a journey, then gate the video on real visual evidence.
 
     Yields a dict the scenario can inspect afterwards:
@@ -220,7 +242,8 @@ def record_verified_journey(scenario_name: str, output_dir: str,
         upload(journey["video"])  # only reached when evidence passed
     """
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    recorder = SegmentedRecorder(scenario_name, output_dir).start()
+    recorder = SegmentedRecorder(scenario_name, output_dir,
+                                 size=size, bitrate=bitrate).start()
     journey = {"video": None, "report": None}
     try:
         yield journey
@@ -231,10 +254,11 @@ def record_verified_journey(scenario_name: str, output_dir: str,
     if journey["video"] is None:
         raise EvidenceGateError({"verdict": "fail",
                                  "failures": ["recording produced no video"]})
-    journey["report"] = gate_video_evidence(
-        journey["video"], frames=frames, min_distinct=min_distinct,
-        report_path=report_path,
-    )
+    gate_kwargs = {"frames": frames, "min_distinct": min_distinct,
+                   "report_path": report_path}
+    if blank_mean is not None:
+        gate_kwargs["blank_mean"] = blank_mean
+    journey["report"] = gate_video_evidence(journey["video"], **gate_kwargs)
 
 
 def overlay_text_on_frame(image_path: str, caption: str) -> str:
