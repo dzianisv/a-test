@@ -126,25 +126,49 @@ def _load_case(case_path, max_steps_override):
     sys.exit(2)
 
 
-def _build_android_grounding_fn():
-    """Build the Holo grounding_fn for Android taps when HAI_API_KEY is set.
+def _build_android_grounding_fn(mode: str = "auto", model: str = None):
+    """Select a grounding backend for Android taps.
 
     Blind pixel-coordinate taps from the planner LLM are imprecise on real
-    touchscreens (adjacent buttons are often <100px apart), causing flaky
-    mis-taps. Holo is a dedicated grounding/localization model that resolves
-    a short element description (e.g. "the digit 7 button") to real pixel
-    coordinates from the current screenshot -- see a_test/grounding.py.
-    Returns None (blind mode, unchanged behavior) when HAI_API_KEY isn't
-    configured, so this is a no-op for environments without the key.
+    touchscreens (adjacent buttons are often <100px apart, and tall phone
+    screens make vertical estimates drift 100-200px), causing flaky mis-taps.
+    A grounding backend resolves a short element description (e.g. "the Submit
+    button") to real pixel coordinates instead.
+
+    Backends:
+      holo  -- H Company Holo model (needs HAI_API_KEY); see grounding.py
+      a11y  -- uiautomator accessibility tree; free, deterministic, exact
+               bounds; falls back to a focused vision call for unlabelled
+               elements. See grounding_a11y.py
+      none  -- blind taps (planner emits x/y directly)
+      auto  -- holo if HAI_API_KEY is set, else a11y (accurate taps by default)
+
+    Returns None (blind mode) only for mode="none" or if the chosen backend
+    can't be built.
     """
-    if not os.environ.get("HAI_API_KEY"):
+    if mode == "none":
         return None
-    from .grounding import make_grounding_fn
+    if mode in ("auto", "holo") and os.environ.get("HAI_API_KEY"):
+        from .grounding import make_grounding_fn
+        try:
+            return make_grounding_fn()
+        except ValueError as e:
+            print(f"WARNING: Holo grounding unavailable, falling back: {e}", file=sys.stderr)
+            if mode == "holo":
+                return None
+    if mode == "holo":
+        print("WARNING: --grounding holo requires HAI_API_KEY; using blind taps", file=sys.stderr)
+        return None
+    # auto (no Holo key) or explicit a11y: use the accessibility-tree backend.
+    from .grounding_a11y import make_a11y_grounding_fn
+    from .client import make_client
+    fallback_client = None
+    fallback_model = None
     try:
-        return make_grounding_fn()
-    except ValueError as e:
-        print(f"WARNING: Holo grounding unavailable, falling back to blind taps: {e}", file=sys.stderr)
-        return None
+        fallback_client, fallback_model = make_client(model or "gpt-4o")
+    except Exception as e:  # noqa: BLE001 -- fallback is optional
+        print(f"WARNING: a11y vision fallback client unavailable: {e}", file=sys.stderr)
+    return make_a11y_grounding_fn(client=fallback_client, model=fallback_model)
 
 
 def _run_android(args):
@@ -158,7 +182,7 @@ def _run_android(args):
 
     model = args.model or os.environ.get("CUA_MODEL", "gpt-4o")
     output_dir = args.output_dir or "/tmp/a-test-output"
-    grounding_fn = _build_android_grounding_fn()
+    grounding_fn = _build_android_grounding_fn(getattr(args, "grounding", "auto"), model)
 
     result = run_case(
         case,
@@ -199,6 +223,11 @@ def main():
                             help="Override maximum CUA steps")
     run_parser.add_argument("--include-xml", action="store_true",
                             help="Include UI hierarchy XML in LLM context (Android only)")
+    run_parser.add_argument("--grounding", choices=["auto", "holo", "a11y", "none"],
+                            default="auto",
+                            help="Tap grounding backend (Android): auto (holo if "
+                                 "HAI_API_KEY else a11y), holo, a11y (uiautomator "
+                                 "bounds), or none (blind taps). Default: auto")
     run_parser.add_argument("--speed-multiplier", type=float, default=1.0,
                             help="Action timing multiplier: <1.0 = faster, >1.0 = slower")
 
